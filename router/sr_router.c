@@ -45,7 +45,7 @@ void sr_init(struct sr_instance* sr)
     pthread_t thread;
 
     pthread_create(&thread, &(sr->attr), sr_arpcache_timeout, sr);
-    
+
     /* Add initialization code here! */
 
 } /* -- sr_init -- */
@@ -79,6 +79,23 @@ void sr_handlepacket(struct sr_instance* sr,
   printf("*** -> Received packet of length %d \n",len);
 
   /* fill in code here */
+  unsigned int minlen = sizeof(sr_ethernet_hdr_t);
+  if (minlen > len){
+    fprintf(strderr, "Invalid ethernet frame.\n");
+    return;
+  }
+
+  uint16_t frame = ethertype(packet);
+
+  if(frame == ethertype_arp){
+    fprintf("Do something ARP..\n");
+  }
+  else if (frame == ethertype_ip){
+    fprintf("Do something IP..\n");
+  }
+  else{
+    fprintf(stderr, "Unrecognized Ethernet Type\n");
+  }
 
 }/* end sr_ForwardPacket */
 
