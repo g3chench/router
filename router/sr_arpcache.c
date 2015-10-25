@@ -28,7 +28,7 @@ void sr_arpcache_sweepreqs(struct sr_instance *sr) {
 }
 
 /* Handles sending ARP requests */
-void handle_arpreq(struct sr_arpreq *req, struct sr_instance *sr) {
+void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req) {
 
     time_t now = time(NULL);
     
