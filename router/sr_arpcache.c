@@ -34,7 +34,7 @@ void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req) {
     
     if (difftime(now, req->sent) > 1.0) {
         if (req->times_sent >= 5) {
-            send_unreachable(sr, req);
+            send_icmp_unreachable(sr, req);
             sr_arpreq_destroy(cache, req);
         }
     } else {
@@ -44,25 +44,6 @@ void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req) {
     }
 }
 
-/* Send icmp host unreachable to source addr of all pkts waiting on this request */
-void send_unreachable(struct sr_instance *sr, struct sr_arpreq *req) {
-
-    struct sr_packet *packet = req->packets;
-
-    while (packet) {
-        // send stuff here
-        packet = packet->next;
-    }
-    // placeholder exit
-    exit(0);
-}
-
-/* Send ARP request */
-void send_arpreq() {
-    // send stuff here
-    // placeholder exit
-    exit(0);
-}
 
 /* You should not need to touch the rest of this code. */
 

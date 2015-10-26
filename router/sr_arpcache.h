@@ -70,6 +70,7 @@
 #include <time.h>
 #include <pthread.h>
 #include "sr_if.h"
+#include "sr_router.h"
 
 #define SR_ARPCACHE_SZ    100  
 #define SR_ARPCACHE_TO    15.0
@@ -146,5 +147,9 @@ void sr_arpcache_dump(struct sr_arpcache *cache);
 int   sr_arpcache_init(struct sr_arpcache *cache);
 int   sr_arpcache_destroy(struct sr_arpcache *cache);
 void *sr_arpcache_timeout(void *cache_ptr);
+
+
+void sr_arpcache_sweepreqs(struct sr_instance *sr);
+void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req);
 
 #endif
