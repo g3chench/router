@@ -81,24 +81,3 @@ void sr_handlepacket(struct sr_instance* sr,
   /* fill in code here */
 
 }/* end sr_ForwardPacket */
-  
-
-/* Send icmp host unreachable to source addr of all pkts waiting on this request */
-void send_icmp_unreachable(struct sr_instance *sr, struct sr_arpreq *req) {
-
-    struct sr_packet *packet = req->packets;
-
-    while (packet) {
-        // send stuff here
-        packet = packet->next;
-    }
-    // placeholder exit
-    exit(0);
-}
-
-/* Send ARP request */
-void send_arpreq(struct sr_instance *sr, struct sr_arpreq *req) {
-    // send stuff here
-    // placeholder exit
-    exit(0);
-}
