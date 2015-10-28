@@ -69,36 +69,88 @@ void sr_init(struct sr_instance* sr)
  *
  *---------------------------------------------------------------------*/
 
+
+int sr_arp_hanlder(struct sr_instance* sr,
+                  uint8_t * packet,
+                  unsigned int len,
+                  char* interface,
+                  unsigned int minLen){
+    minLen += sizeof(sr_arp_hdr_t);
+    if (minLen > len){
+        frpint(strderr, "Invalid ethernet frame length, for loading ARP header.\n");
+    } else {
+        //To check ARP Packets, just run print_hdrs(packet, len)
+        //define ARP header
+        sr_arp_hdr_t *arpHeader = (sr_arp_hdr_t*)(packet + sizeof(sr_ethernet_hdr_t));
+
+        if (ntohs(arpHeader->ar_hrd) == arp_hrd_ethernet &&
+            arpHeader->ar_hln == 0x06 &&
+            arpHeader->ar_pln == 0x04 &&
+            ntohs (arpHeader->ar_pro) == ethertype_ip){
+            switch (ntohs(arpHeader->ar_op)){
+                case arp_op_reply:
+                    struct sr_arpreq *arpReq = sr_arpcache_insert(&sr->cache, arpHeader->ar_sha, arpHeader->ar_sip);
+                    if (arpReq){
+                        struct sr_packet* currPkt = arpReq->packets;
+                        struct sr_packet* nextPkt;
+                        struct sr_if *interface = 0;
+                        while(currPkt){
+                            nextPkt = currPkt->next;
+                            sr_nexthop_ip_iface(sr, currPkt->buf, currPkt->len, arpReq->ip, interface);
+                            currPkt = nextPkt;
+                        }
+                        sr_arpreq_destroy(&sr->cache, arpReq);
+                    }
+                    break;
+            }
+        }
+    }
+
+}
+
 void sr_handlepacket(struct sr_instance* sr,
         uint8_t * packet/* lent */,
         unsigned int len,
         char* interface/* lent */)
 {
-  /* REQUIRES */
-  assert(sr);
-  assert(packet);
-  assert(interface);
+      /* REQUIRES */
+    assert(sr);
+    assert(packet);
+    assert(interface);
 
-  printf("*** -> Received packet of length %d \n",len);
+    printf("*** -> Received packet of length %d \n",len);
 
-  /* fill in code here */
-  unsigned int minlen = sizeof(sr_ethernet_hdr_t);
-  if (minlen > len){
-    fprintf(strderr, "Invalid ethernet frame.\n");
-    return;
-  }
+    /* fill in code here */
+    unsigned int minLen = sizeof(sr_ethernet_hdr_t);
+    if (minLen > len){
+        fprintf(strderr, "Invalid ethernet frame length, for parsing IP header.\n");
+        return;
+    }
 
-  uint16_t frame = ethertype(packet);
+    uint16_t frame = ethertype(packet);
 
-  if(frame == ethertype_arp){
+    switch(frame){
+        case ethertype_arp:
+            fprintf("Do something ARP..\n");
+            break;
+        case ethertype_ip:
+            fprintf("Do something IP..\n");
+            break;
+        default:
+            fprintf(stderr, "Unrecognized Ethernet Type\n");
+            break;
+    }
+
+    /*if(frame == ethertype_arp){
     fprintf("Do something ARP..\n");
-  }
-  else if (frame == ethertype_ip){
+    }
+    else if (frame == ethertype_ip){
     fprintf("Do something IP..\n");
-  }
-  else{
+    }
+    else{
     fprintf(stderr, "Unrecognized Ethernet Type\n");
-  }
+    }*/
 
 }/* end sr_ForwardPacket */
+
 
