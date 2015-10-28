@@ -70,7 +70,7 @@ void sr_init(struct sr_instance* sr)
  *---------------------------------------------------------------------*/
 
 
-int sr_arp_hanlder(struct sr_instance* sr,
+void sr_arp_hanlder(struct sr_instance* sr,
                   uint8_t * packet,
                   unsigned int len,
                   char* interface,
@@ -84,24 +84,49 @@ int sr_arp_hanlder(struct sr_instance* sr,
         sr_arp_hdr_t *arpHeader = (sr_arp_hdr_t*)(packet + sizeof(sr_ethernet_hdr_t));
 
         if (ntohs(arpHeader->ar_hrd) == arp_hrd_ethernet &&
-            arpHeader->ar_hln == 0x06 &&
-            arpHeader->ar_pln == 0x04 &&
-            ntohs (arpHeader->ar_pro) == ethertype_ip){
+        arpHeader->ar_hln == 0x06 &&
+        arpHeader->ar_pln == 0x04 &&
+        ntohs (arpHeader->ar_pro) == ethertype_ip){
+
             switch (ntohs(arpHeader->ar_op)){
-                case arp_op_reply:
-                    struct sr_arpreq *arpReq = sr_arpcache_insert(&sr->cache, arpHeader->ar_sha, arpHeader->ar_sip);
-                    if (arpReq){
-                        struct sr_packet* currPkt = arpReq->packets;
-                        struct sr_packet* nextPkt;
-                        struct sr_if *interface = 0;
-                        while(currPkt){
-                            nextPkt = currPkt->next;
-                            sr_nexthop_ip_iface(sr, currPkt->buf, currPkt->len, arpReq->ip, interface);
-                            currPkt = nextPkt;
-                        }
-                        sr_arpreq_destroy(&sr->cache, arpReq);
+            case arp_op_request:
+                struct sr_if* sr_interface;
+                sr_ethernet_hdr_t* etherHeader = (sr_ethernet_hdr_t*)packet;
+                if (ntohl(struct sr_if* sr_interface->ip) == nothl(arpHeader->ar_tip)){
+                    memcpy(etherHeader->ether_dhost, etherHeader->ether_shost, ETHER_ADDR_LEN);
+                    memcpy(etherHeader->ether_shost, sr_interface->addr, ETHER_ADDR_LEN);
+
+                    arpHeader->ar_op = htons(arp_op_reply);
+                    arpHeader->ar_tip = arpHeader->ar_sip;
+                    arpHeader->ar_sip = sr_interface->ip;
+
+                    memcpy(arpHeader->ar_tha, arpHeader->ar_sha, ETHER_ADDR_LEN);
+                    memcpy(arpHeader->ar_sha, sr_interface->addr, ETHER_ADDR_LEN);
+
+                    sr_send_packet(sr, packet, len, interface);
+                }
+            break;
+
+            case arp_op_reply:
+                struct sr_arpreq *arpReq = sr_arpcache_insert(&sr->cache, arpHeader->ar_sha, arpHeader->ar_sip);
+                struct sr_if* sr_interface;
+                if (arpReq){
+                    struct sr_packet* currPkt = arpReq->packets;
+                    while(currPkt){
+                        sr_interface = sr_get_interface(sr, interface);
+                        sr_ethernet_hdr_t *etherhdr = (sr_ethernet_hdr_t *) currPkt->buf;
+
+                        memcpy(etherhdr->ether_dhost, arpHeader->ar_sha, ETHER_ADDR_LEN);
+                        memcpy(etherhdr->ether_shost, arpHeader->ar_tha, ETHER_ADDR_LEN);
+
+                        sr_send_packet(sr, currPkt->buf, currPkt->len, arpReq->ip, sr_interface);
+                        currPkt = currPkt->next;
                     }
-                    break;
+                    sr_arpreq_destroy(&sr->cache, arpReq);
+                }
+                break;struct sr_if* sr_interface;
+            default:
+                printf("Invalid Ethernet Type: %d\n", frame);
             }
         }
     }
@@ -131,7 +156,7 @@ void sr_handlepacket(struct sr_instance* sr,
 
     switch(frame){
         case ethertype_arp:
-            fprintf("Do something ARP..\n");
+            sr_arp_hanlder(sr, packet, len, interface, minLen);
             break;
         case ethertype_ip:
             fprintf("Do something IP..\n");
