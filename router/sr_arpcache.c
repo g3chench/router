@@ -17,8 +17,53 @@
   See the comments in the header file for an idea of what it should look like.
 */
 void sr_arpcache_sweepreqs(struct sr_instance *sr) { 
-    /* Fill this in */
+
+    struct sr_arpreq *req = sr->cache.requests;
+
+    while (req) {
+        struct sr_arpreq *nextReq = req->next;
+        handle_arpreq(sr, req);
+        req = nextReq;
+    }
 }
+
+/* Handles sending ARP requests */
+void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req) {
+
+    time_t now = time(NULL);
+    
+    if (difftime(now, req->sent) > 1.0) {
+        if (req->times_sent >= 5) {
+            send_icmp_unreachable(sr, req);
+            sr_arpreq_destroy(cache, req);
+        }
+    } else {
+        send_arpreq(sr, req);
+        req->sent = now;
+        req->times_sent++;
+    }
+}
+
+/* Send icmp host unreachable to source addr of all pkts waiting on this request */
+void send_icmp_unreachable(struct sr_instance *sr, struct sr_arpreq *req) {
+
+    struct sr_packet *packet = req->packets;
+
+    while (packet) {
+        // send stuff here
+        packet = packet->next;
+    }
+    // placeholder exit
+    exit(0);
+}
+
+/* Send ARP request */
+void send_arpreq(struct sr_instance *sr, struct sr_arpreq *req) {
+    // send stuff here
+    // placeholder exit
+    exit(0);
+}
+
 
 /* You should not need to touch the rest of this code. */
 
@@ -84,7 +129,7 @@ struct sr_arpreq *sr_arpcache_queuereq(struct sr_arpcache *cache,
         new_pkt->buf = (uint8_t *)malloc(packet_len);
         memcpy(new_pkt->buf, packet, packet_len);
         new_pkt->len = packet_len;
-		new_pkt->iface = (char *)malloc(sr_IFACE_NAMELEN);
+        new_pkt->iface = (char *)malloc(sr_IFACE_NAMELEN);
         strncpy(new_pkt->iface, iface, sr_IFACE_NAMELEN);
         new_pkt->next = req->packets;
         req->packets = new_pkt;
