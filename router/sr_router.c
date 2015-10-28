@@ -76,12 +76,14 @@ void sr_arp_hanlder(struct sr_instance* sr,
                   char* interface,
                   unsigned int minLen){
     minLen += sizeof(sr_arp_hdr_t);
+    sr_arp_hdr_t *arpHeader = (sr_arp_hdr_t*)(packet + sizeof(sr_ethernet_hdr_t));
     if (minLen > len){
-        frpint(strderr, "Invalid ethernet frame length, for loading ARP header.\n");
+        frpint(strderr, "Invalid ARP header length\n");
+    } else if (arpHeader->ar_hrd != htons(arp_hrd_ethernet)){
+        fprint(strderr, "Invalid ARP hardware format\n")
     } else {
         //To check ARP Packets, just run print_hdrs(packet, len)
         //define ARP header
-        sr_arp_hdr_t *arpHeader = (sr_arp_hdr_t*)(packet + sizeof(sr_ethernet_hdr_t));
 
         if (ntohs(arpHeader->ar_hrd) == arp_hrd_ethernet &&
         arpHeader->ar_hln == 0x06 &&
@@ -143,12 +145,12 @@ void sr_handlepacket(struct sr_instance* sr,
     assert(packet);
     assert(interface);
 
-    printf("*** -> Received packet of length %d \n",len);
+    printf("*** -> Received packet of length %d\n",len);
 
     /* fill in code here */
     unsigned int minLen = sizeof(sr_ethernet_hdr_t);
     if (minLen > len){
-        fprintf(strderr, "Invalid ethernet frame length, for parsing IP header.\n");
+        fprintf(strderr, "Invalid ethernet frame length\n");
         return;
     }
 
