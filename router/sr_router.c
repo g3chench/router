@@ -70,7 +70,7 @@ void sr_init(struct sr_instance* sr)
  *---------------------------------------------------------------------*/
 
 
-void sr_arp_hanlder(struct sr_instance* sr,
+void sr_arp_handler(struct sr_instance* sr,
                   uint8_t * packet,
                   unsigned int len,
                   char* interface,
@@ -158,7 +158,7 @@ void sr_handlepacket(struct sr_instance* sr,
 
     switch(frame){
         case ethertype_arp:
-            sr_arp_hanlder(sr, packet, len, interface, minLen);
+            sr_arp_handler(sr, packet, len, interface, minLen);
             break;
         case ethertype_ip:
             fprintf("Do something IP..\n");
