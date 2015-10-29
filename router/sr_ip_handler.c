@@ -53,40 +53,28 @@ void ip_handler(struct sr_instance* sr,
     
     /* Check the the ip packet is being sent to this host, sr_router */
     /* refer to sr_if.h*/
-    if (sr->sr_addr != ip_packet->ip_dest) {
-        fprintf("")
+    if (sr->sr_addr == ip_packet->ip_dest) {
+        /* check if IP packet uses ICMP */
+        if (ip_packet->ip_p == 1) {
+            send_icmp_echo_request(sr, packet, len, interface);
+
+        /* check if IP packet uses TCP or UDP */
+        } else if (ip_packet->ip_p == 6 || ip_packet->ip_p == 14) {
+            send_icmp_port_unreachable(sr, packet, len, interface);
+
+        } else {
+            fprintf(stderr, "Error: this IP packet uses an unrecognized protocol.\nDropping packet...\n");
+        }
+
+
+
     } else {
-    /* check if IP packet uses ICMP */
-      if (ip_packet->ip_p == 1) {
-      // create the ICMP echo reply packet to send
-      sr_icmp_hdr_t echo_req_hdr = malloc(sizeof(icmp_hdr_t));
+        
+        // implement the other half "else packet not for me"
+        // uses LPM
 
-      echo_req_hdr->icmp_type = 0;
-      echo_req_hdr->icmp_code = 0;
-      echo_req_hdr->icmp_sum = cksum(&icmp_req_cargo);
+        // pseudo code in google doc
+        // https://docs.google.com/document/d/1LiiXEJTGSktAa2EZYXHPtWlENKSVywhMjO-noRPwU14/edit
 
-      // send the ICMP packet
-      /*the icmp packet does not have cargo, just empty data*/
-      sr_send_packet(sr, echo_reply_hdr, sizeof(sr_icmp_hdr_t), iface);
-
-
-     /* check if IP packet uses TCP or UDP */
-      } else if (ip_packet->ip_p == 6 || ip_packet->ip_p == 14) {
-      
-          // create the ICMP port unreachable packet to sends
-          sr_icmp_hdr_t echo_reply_hdr = malloc(sizeof(icmp_hdr_t));
-          
-          echo_reply_hdr->icmp_type = 3;
-          echo_reply_hdr->icmp_code = 0;
-          echo_reply_hdr->icmp_sum = cksum(&icmp_reply_cargo);
-
-          // send the ICMP packet
-          /*the icmp packet does not have cargo, just empty data*/
-          sr_send_packet(sr, echo_req_hdr, sizeof(sr_icmp_hdr_t), iface);
-
-
-      } else {
-          fprintf(stderr, "Error: this IP packet uses an unrecognized protocol.\nDropping packet...\n");
-      }
-    
+    }
 }
