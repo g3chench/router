@@ -1,5 +1,5 @@
-#ifndef SR_IP_HANDLER_H
-#define SR_IP_HANDLER_H
+#ifndef SR_ICMP_HANDLER_H
+#define SR_ICMP_HANDLER_H
 
 #include <stdio.h>
 #include <assert.h>
