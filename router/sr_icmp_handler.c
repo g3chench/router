@@ -8,6 +8,7 @@
 #include "sr_protocol.h"
 #include "sr_arpcache.h"
 #include "sr_utils.h"
+#include "sr_icmp_handler.h"
 
 
 /*
@@ -68,3 +69,15 @@ sr_icmp_hdr_t gen_icmp_pkt (int type, int code=0, uint8_t cargo_len) {
 	return icmp_pkt;
 }
 
+/* Send icmp host unreachable to source addr of all pkts waiting on this request */
+void send_icmp_unreachable(struct sr_instance *sr, struct sr_arpreq *req) {
+
+    struct sr_packet *packet = req->packets;
+
+    while (packet) {
+        // send stuff here
+        packet = packet->next;
+    }
+    // placeholder exit
+    exit(0);
+}

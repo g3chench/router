@@ -8,6 +8,7 @@
 #include "sr_protocol.h"
 #include "sr_arpcache.h"
 #include "sr_utils.h"
+#include "sr_ip_handler.h"
 
 /*
 sr_router must check if it's an IP packet
