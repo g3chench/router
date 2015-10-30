@@ -151,6 +151,5 @@ void *sr_arpcache_timeout(void *cache_ptr);
 
 void sr_arpcache_sweepreqs(struct sr_instance *sr);
 void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req);
-void send_arpreq(struct sr_instance *sr, struct sr_arpreq *req);
 
 #endif

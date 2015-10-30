@@ -97,14 +97,14 @@ void sr_arp_handler(struct sr_instance* sr,
             struct sr_arpreq* arpReq = sr_arpcache_insert(&sr->cache, arpHeader->ar_sha, arpHeader->ar_sip);
 
             switch (ntohs(arpHeader->ar_op)){
-            /* If the packet is a reply */
-            case arp_op_reply:
-                handle_arp_reply(sr, packet, len, interface, sr_interface, arpHeader, etherHeader);
-            break;
-
             /* If the packet is a request */
             case arp_op_request:
-                handle_arp_request(sr, arpReq);
+                handle_arp_request(sr, packet, len, interface, sr_interface, arpHeader, etherHeader);
+            break;
+
+            /* If the packet is a reply */
+            case arp_op_reply:
+                handle_arp_reply(sr, arpReq);
                 break;
             default:
                 fprintf(stderr, "Invalid Ethernet Type: %d\n", frame);
@@ -114,7 +114,7 @@ void sr_arp_handler(struct sr_instance* sr,
 
 }
 
-void handle_arp_reply(struct sr_instance* sr,
+void handle_arp_request(struct sr_instance* sr,
                         uint8_t * packet,
                         unsigned int len,
                         char* interface,
@@ -137,7 +137,7 @@ void handle_arp_reply(struct sr_instance* sr,
     }
 }
 
-void handle_arp_request(struct sr_instance* sr,
+void handle_arp_reply(struct sr_instance* sr,
                     struct sr_arpreq* arpReq) {
     if (arpReq){
         struct sr_packet* currPkt = arpReq->packets;
