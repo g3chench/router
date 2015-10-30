@@ -97,40 +97,14 @@ void sr_arp_handler(struct sr_instance* sr,
             struct sr_arpreq* arpReq = sr_arpcache_insert(&sr->cache, arpHeader->ar_sha, arpHeader->ar_sip);
 
             switch (ntohs(arpHeader->ar_op)){
-            /* If the packet is a request */
-            case arp_op_request:
-                if (ntohl(sr_interface->ip) == ntohl(arpHeader->ar_tip)){
-                    memcpy(etherHeader->ether_dhost, etherHeader->ether_shost, ETHER_ADDR_LEN);
-                    memcpy(etherHeader->ether_shost, sr_interface->addr, ETHER_ADDR_LEN);
-
-                    arpHeader->ar_op = htons(arp_op_reply);
-                    arpHeader->ar_tip = arpHeader->ar_sip;
-                    arpHeader->ar_sip = sr_interface->ip;
-
-                    memcpy(arpHeader->ar_tha, arpHeader->ar_sha, ETHER_ADDR_LEN);
-                    memcpy(arpHeader->ar_sha, sr_interface->addr, ETHER_ADDR_LEN);
-                    /* Send  packet (ethernet header included!) of length 'len'
-                    * to the server to be injected onto the wire.*/
-                    sr_send_packet(sr, packet, len, interface);
-                }
-            break;
-
             /* If the packet is a reply */
             case arp_op_reply:
-                if (arpReq){
-                    struct sr_packet* currPkt = arpReq->packets;
-                    while(currPkt){
-                        sr_interface = sr_get_interface(sr, interface);
-                        sr_ethernet_hdr_t *etherhdr = (sr_ethernet_hdr_t *) currPkt->buf;
+                handle_arp_reply(sr, packet, len, interface, sr_interface, arpHeader, etherHeader);
+            break;
 
-                        memcpy(etherhdr->ether_dhost, arpHeader->ar_sha, ETHER_ADDR_LEN);
-                        memcpy(etherhdr->ether_shost, arpHeader->ar_tha, ETHER_ADDR_LEN);
-
-                        sr_send_packet(sr, currPkt->buf, currPkt->len, currPkt->iface);
-                        currPkt = currPkt->next;
-                    }
-                    sr_arpreq_destroy(&sr->cache, arpReq);
-                }
+            /* If the packet is a request */
+            case arp_op_request:
+                handle_arp_request(sr, arpReq);
                 break;
             default:
                 fprintf(stderr, "Invalid Ethernet Type: %d\n", frame);
@@ -138,6 +112,47 @@ void sr_arp_handler(struct sr_instance* sr,
         }
     }
 
+}
+
+void handle_arp_reply(struct sr_instance* sr,
+                        uint8_t * packet,
+                        unsigned int len,
+                        char* interface,
+                        struct sr_if* sr_interface,
+                        sr_arp_hdr_t *arpHeader,
+                        sr_ethernet_hdr_t *etherHeader) {
+    if (ntohl(sr_interface->ip) == ntohl(arpHeader->ar_tip)){
+        memcpy(etherHeader->ether_dhost, etherHeader->ether_shost, ETHER_ADDR_LEN);
+        memcpy(etherHeader->ether_shost, sr_interface->addr, ETHER_ADDR_LEN);
+
+        arpHeader->ar_op = htons(arp_op_reply);
+        arpHeader->ar_tip = arpHeader->ar_sip;
+        arpHeader->ar_sip = sr_interface->ip;
+
+        memcpy(arpHeader->ar_tha, arpHeader->ar_sha, ETHER_ADDR_LEN);
+        memcpy(arpHeader->ar_sha, sr_interface->addr, ETHER_ADDR_LEN);
+        /* Send  packet (ethernet header included!) of length 'len'
+        * to the server to be injected onto the wire.*/
+        sr_send_packet(sr, packet, len, interface);
+    }
+}
+
+void handle_arp_request(struct sr_instance* sr,
+                    struct sr_arpreq* arpReq) {
+    if (arpReq){
+        struct sr_packet* currPkt = arpReq->packets;
+        while(currPkt){
+            sr_interface = sr_get_interface(sr, interface);
+            sr_ethernet_hdr_t *etherhdr = (sr_ethernet_hdr_t *) currPkt->buf;
+
+            memcpy(etherhdr->ether_dhost, arpHeader->ar_sha, ETHER_ADDR_LEN);
+            memcpy(etherhdr->ether_shost, arpHeader->ar_tha, ETHER_ADDR_LEN);
+
+            sr_send_packet(sr, currPkt->buf, currPkt->len, currPkt->iface);
+            currPkt = currPkt->next;
+        }
+        sr_arpreq_destroy(&sr->cache, arpReq);
+    }
 }
 
 void sr_handlepacket(struct sr_instance* sr,

@@ -189,23 +189,3 @@ void send_icmp_port_unreachable(struct sr_instance *sr, uint8_t *packet, char *i
 void send_icmp_time_exceeded(struct sr_instance *sr, uint8_t *packet, char *interface) {
 	sr_send_packet(sr, gen_icmp_packet(packet, 11), eth_frame_size, interface);
 }
-
-
-
-
-/////////////////////Chris this is your code right??? gunna leave it
-	// here
-/* Send icmp host unreachable to source addr of all pkts waiting on this request */
-/*
-void send_icmp_unreachable(struct sr_instance *sr, struct sr_arpreq *req) {
-	struct sr_packet *packet = req->packets;
-
-    while (packet) {
-        // send stuff here
-        packet = packet->next;
-    }
-    // placeholder exit
-    exit(0);
-    
-}
-*/
