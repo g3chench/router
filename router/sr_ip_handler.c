@@ -9,6 +9,7 @@
 #include "sr_arpcache.h"
 #include "sr_utils.h"
 #include "sr_ip_handler.h"
+#include "sr_icmp_handler.h"
 
 /*
  * sr_router must check if it's an IP packet
@@ -61,7 +62,7 @@ void ip_handler(struct sr_instance* sr,
     int sent_to_me = 0;
     struct sr_if* current_interface = sr->if_list;
     while (current_interface) {
-        if (sr_get_interface_from_ip(sr, ip_hdr->ip_dest) == current_interface->addr){
+        if (sr_get_interface_from_ip(sr, ip_hdr->ip_dst) == current_interface->addr){
             sent_to_me = 1;
             break;
         }
@@ -73,7 +74,6 @@ void ip_handler(struct sr_instance* sr,
         /* check if IP packet uses ICMP */
         if (ip_hdr->ip_p == ip_protocol_icmp) {
             send_icmp_echo_request(sr, packet, len, interface);
-        }
 
         /* check if IP packet uses TCP or UDP */
         } else if (ip_hdr->ip_p == 6 || ip_hdr->ip_p == 14) {
@@ -85,7 +85,7 @@ void ip_handler(struct sr_instance* sr,
 
 
     } else {
-        printf("Forward this packet to another router...\n")
+        printf("Forward this packet to another router...\n");
         
         if (ip_hdr->ip_ttl <= 1) {
           fprintf(stderr, "Packet's TTL expired")
@@ -99,16 +99,16 @@ void ip_handler(struct sr_instance* sr,
             struct sr_rt *current_node = sr->routing_table;
             
             while (node) {
-              if (current_node->dest.s_addr == ip_hdr->mask.s_addr & ip_hdr->ip_dest) {);
+              if (current_node->dest.s_addr == ip_hdr->mask.s_addr & ip_hdr->ip_dest) {
 
                   /* Build the outgoing ethernet frame to forward to another router */
-                  struct sr_if *out_interface = sr_get_interface(sr, current_entry->interface
+                  struct sr_if *out_interface = sr_get_interface(sr, current_entry->interface);
                   struct sr_ethernet_hdr_t *eth_hdr = (sr_ethernet_hdr_t*) (packet);
                   
                   memcpy(eth_hdr->ether_shost, out_interface->addr, ETHER_ADDR_LEN);
 
                   // search for the new ethernet frame's destination MAC address ARP cache
-                  struct sr_arpentry *current_arp = sr_arpcache_lookup(&(sr->cache), node->gw.s_addr);
+                  struct sr_arpentry *current_arp = sr_arpcache_lookup(&(sr->cache), current_node->gw.s_addr);
                   
                   /* found a hit in the ARP cache*/
                   if (current_arp) {
@@ -117,14 +117,15 @@ void ip_handler(struct sr_instance* sr,
                       /* remember ip_hl:4 in sr_protocol.h*/
                       ip_hdr->ip_sum = cksum(ip_hdr, ip_hdr->ip_hl*4);
                       free(current_arp);
-                      return sr_send_packet(sr, packet, current_node->interface);
+                      sr_send_packet(sr, packet, len, current_node->interface);
+                      return;
 
                   } else {
                       /* Cannot find a routing table entry. We try to request */
                       send_arp_req(sr, sr_arpcache_queuereq(&(sr->cache), current_node->gw.s_addr, packet, len, interface));
                       return ;
                   }
-
+                }
               }
 
               /* go to the next node in the rt_table */
@@ -133,6 +134,6 @@ void ip_handler(struct sr_instance* sr,
           
           return;
         }
-    }
-    return ;
+
+    return;
 }
