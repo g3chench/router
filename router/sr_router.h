@@ -45,7 +45,7 @@ struct sr_instance
 {
     int  sockfd;   /* socket to server */
     char user[32]; /* user name */
-    char host[32]; /* host name */ 
+    char host[32]; /* host name */
     char template[30]; /* template name if any */
     unsigned short topo_id;
     struct sockaddr_in sr_addr; /* address to server */
@@ -67,9 +67,9 @@ int sr_read_from_server(struct sr_instance* sr);
 /* -- sr_router.c -- */
 void sr_init(struct sr_instance* );
 void sr_handlepacket(struct sr_instance* sr, uint8_t * packet, unsigned int len, char* interface);
-void sr_arp_handler(struct sr_instance* sr, uint8_t * packet, unsigned int len, char* interface, unsigned int minLen, uint16_t frame);
+void arp_handler(struct sr_instance* sr, uint8_t * packet, unsigned int len, char* interface, unsigned int minLen, uint16_t frame);
 void handle_arp_request(struct sr_instance* sr, uint8_t * packet, unsigned int len, char* interface, struct sr_if* sr_interface, sr_arp_hdr_t *arpHeader, sr_ethernet_hdr_t *etherHeader);
-void handle_arp_reply(struct sr_instance* sr, struct sr_arpreq* arpReq);
+void handle_arp_reply(struct sr_instance* sr, struct sr_arpreq* arpReq, struct sr_if* sr_interface, sr_arp_hdr_t *arpHeader);
 
 /* -- sr_if.c -- */
 void sr_add_interface(struct sr_instance* sr, const char* name);
