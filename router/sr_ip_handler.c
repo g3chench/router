@@ -16,6 +16,20 @@
  * sr_router must check if it's an IP packet
  * then call this function
  */
+struct *sr_if get_output_interface(struct sr_instance *sr, uint32_t address) {
+	
+	struct sr_if *current_node = sr->if_list;
+	
+	while (current_node) {
+		if (address == current_node->ip) {
+			return current_node;
+		}
+		current_node = current_node->next;
+	}
+
+	return NULL;
+}
+
 void ip_handler(struct sr_instance* sr, 
         uint8_t *packet,
         unsigned int len, 
@@ -60,18 +74,8 @@ void ip_handler(struct sr_instance* sr,
     /* else this IP packet is valid: */
     
     /* Check that the ip packet is being sent to this host, sr_router */
-    /* refer to sr_if.h*/
-    int sent_to_me = 0;
-    struct sr_if* current_interface = sr->if_list;
-    while (current_interface) {
-        if (sr_get_interface_from_ip(sr, ip_hdr->ip_dst) == current_interface->addr){
-            sent_to_me = 1;
-            break;
-        }
-		current_interface = current_interface->next;
-    }
-
-    if (sent_to_me == 1) {
+	sr_if *out_interface = get_output_interface(sr, ip_hdr->ip_dest);
+	if (out_interface != NULL) {
         printf("This IP packet was sent to me!\n");
         /* check if IP packet uses ICMP */
         if (ip_hdr->ip_p == ip_protocol_icmp) {
@@ -86,6 +90,7 @@ void ip_handler(struct sr_instance* sr,
         }
 
 
+	// This packet was sent to me
     } else {
         printf("Forward this packet to another router...\n");
         
@@ -104,7 +109,6 @@ void ip_handler(struct sr_instance* sr,
               if (current_node->dest.s_addr == ip_hdr->mask.s_addr & ip_hdr->ip_dst) {
 
                   /* Build the outgoing ethernet frame to forward to another router */
-                  struct sr_if *out_interface = sr_get_interface(sr, current_node->interface);
                   sr_ethernet_hdr_t *eth_hdr = (sr_ethernet_hdr_t*) (packet);
                   
                   memcpy(eth_hdr->ether_shost, out_interface->addr, ETHER_ADDR_LEN);
