@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <assert.h>
+#include <string.h>
 
 
 #include "sr_if.h"
@@ -73,11 +74,11 @@ void ip_handler(struct sr_instance* sr,
         printf("This IP packet was sent to me!\n");
         /* check if IP packet uses ICMP */
         if (ip_hdr->ip_p == ip_protocol_icmp) {
-            send_icmp_echo_request(sr, packet, len, interface);
+            send_icmp_echo_request(sr, packet, interface);
 
         /* check if IP packet uses TCP or UDP */
         } else if (ip_hdr->ip_p == 6 || ip_hdr->ip_p == 14) {
-            send_icmp_port_unreachable(sr, packet, len, interface);
+            send_icmp_port_unreachable(sr, packet, interface);
 
         } else {
             fprintf(stderr, "Error: this IP packet uses an unrecognized protocol.\nDropping packet...\n");
@@ -88,8 +89,8 @@ void ip_handler(struct sr_instance* sr,
         printf("Forward this packet to another router...\n");
         
         if (ip_hdr->ip_ttl <= 1) {
-          fprintf(stderr, "Packet's TTL expired")
-          send_icmp_time_exceeded(sr, ip_hdr, len, char *interface);
+          fprintf(stderr, "Packet's TTL expired");
+          send_icmp_time_exceeded(sr, ip_hdr, interface);
           return ;
 
         } else {
@@ -98,11 +99,11 @@ void ip_handler(struct sr_instance* sr,
             */
             struct sr_rt *current_node = sr->routing_table;
             
-            while (node) {
-              if (current_node->dest.s_addr == ip_hdr->mask.s_addr & ip_hdr->ip_dest) {
+            while (current_node) {
+              if (current_node->dest.s_addr == ip_hdr->mask.s_addr & ip_hdr->ip_dst) {
 
                   /* Build the outgoing ethernet frame to forward to another router */
-                  struct sr_if *out_interface = sr_get_interface(sr, current_entry->interface);
+                  struct sr_if *out_interface = sr_get_interface(sr, current_node->interface);
                   struct sr_ethernet_hdr_t *eth_hdr = (sr_ethernet_hdr_t*) (packet);
                   
                   memcpy(eth_hdr->ether_shost, out_interface->addr, ETHER_ADDR_LEN);
