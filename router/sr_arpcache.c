@@ -46,7 +46,7 @@ void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req) {
             sr_arpreq_destroy(&sr->cache, req);
         }
     } else {
-        handle_arp_reply(sr, req);
+        handle_arp_reply(sr, sr_get_interface(sr, req->ip), req);
         req->sent = now;
         req->times_sent++;
     }
