@@ -11,6 +11,6 @@
 #include "sr_arpcache.h"
 #include "sr_utils.h"
 
-void ip_handler(struct sr_instance* sr, uint8_t *packet, unsigned int len, char *interface)
+void ip_handler(struct sr_instance* sr, uint8_t *packet, unsigned int len, char *interface);
 
 #endif
