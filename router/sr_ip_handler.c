@@ -61,7 +61,7 @@ void ip_handler(struct sr_instance* sr,
     int sent_to_me = 0;
     struct sr_if* current_interface = sr->if_list;
     while (current_interface) {
-        if (sr_get_interface_from_ip(sr, ip_hdr->ip_dest) {
+        if (sr_get_interface_from_ip(sr, ip_hdr->ip_dest) == current_interface->addr){
             sent_to_me = 1;
             break;
         }
