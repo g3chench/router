@@ -11,7 +11,7 @@
 #include "sr_arpcache.h"
 #include "sr_utils.h"
 
-sr_icmp_hdr_t gen_icmp_packet (int type, int code=0, uint8_t cargo_len);
+sr_icmp_hdr_t gen_icmp_packet (int type, int code, uint8_t cargo_len);
 
 sr_ethernet_hdr_t* gen_eth_frame (sr_ethernet_hdr_t *old_eth_pkt, int old_len, uint8_t *icmp_pkt, int icmp_type);
 
