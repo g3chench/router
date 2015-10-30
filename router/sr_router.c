@@ -126,7 +126,7 @@ void sr_arp_hanlder(struct sr_instance* sr,
                     }
                     sr_arpreq_destroy(&sr->cache, arpReq);
                 }
-                break;struct sr_if* sr_interface;
+                break;
             default:
                 printf("Invalid Ethernet Type: %d\n", frame);
             }
@@ -148,21 +148,31 @@ void sr_handlepacket(struct sr_instance* sr,
     printf("*** -> Received packet of length %d\n",len);
 
     /* fill in code here */
+    /* Get the minimum size of Ethernet Header */
     unsigned int minLen = sizeof(sr_ethernet_hdr_t);
+
+    /* If the packet size is smaller than the
+     minimum Ethernet Header size, output error */
     if (minLen > len){
-        fprintf(strderr, "Invalid ethernet frame length\n");
+        fprintf(strderr, "Packet length is too small\n");
         return;
     }
 
+    /* Get Ethernet's frame */
     uint16_t frame = ethertype(packet);
 
     switch(frame){
+        /* If it's an ARP Packet */
         case ethertype_arp:
             sr_arp_hanlder(sr, packet, len, interface, minLen);
             break;
+
+        /* If it's an IP Packet */
         case ethertype_ip:
             fprintf("Do something IP..\n");
             break;
+
+        /* If it's neither ARP nor IP Packet */
         default:
             fprintf(stderr, "Unrecognized Ethernet Type\n");
             break;
