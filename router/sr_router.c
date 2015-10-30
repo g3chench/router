@@ -78,9 +78,9 @@ void sr_arp_handler(struct sr_instance* sr,
     minLen += sizeof(sr_arp_hdr_t);
     sr_arp_hdr_t *arpHeader = (sr_arp_hdr_t*)(packet + sizeof(sr_ethernet_hdr_t));
     if (minLen > len){
-        frpint(strderr, "Invalid ARP header length\n");
+        fprint(stderr, "Invalid ARP header length\n");
     } else if (arpHeader->ar_hrd != htons(arp_hrd_ethernet)){
-        fprint(strderr, "Invalid ARP hardware format\n")
+        fprint(stderr, "Invalid ARP hardware format\n");
     } else {
         //To check ARP Packets, just run print_hdrs(packet, len)
         //define ARP header
