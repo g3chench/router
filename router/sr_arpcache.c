@@ -10,7 +10,7 @@
 #include "sr_router.h"
 #include "sr_if.h"
 #include "sr_protocol.h"
-#include "sr_ip_handler.h"
+#include "sr_icmp_handler.h"
 
 /* 
   This function gets called every second. For each request sent out, we keep
@@ -37,7 +37,7 @@ void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req) {
         if (req->times_sent >= 5) {
             struct sr_packet *packet = req->packets;
 
-            // Send icmp host unreachable to source addr of all pkts waiting on this request
+            /* Send icmp host unreachable to source addr of all pkts waiting on this request */
             while (packet) {
                 send_icmp_host_unreachable(sr, packet, sr_get_interface(sr, packet->iface));
                 packet = packet->next;
@@ -46,7 +46,7 @@ void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req) {
             sr_arpreq_destroy(&sr->cache, req);
         }
     } else {
-        handle_arp_reply(sr, sr_get_interface(sr, req->ip), req);
+        handle_arp_reply(sr, req);
         req->sent = now;
         req->times_sent++;
     }

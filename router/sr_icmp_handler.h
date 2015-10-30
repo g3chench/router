@@ -13,7 +13,7 @@
 
 sr_icmp_hdr_t gen_icmp_packet (int type, int code=0, uint8_t cargo_len);
 
-sr_ethernet_hdr_t* gen_eth_frame (sr_ethernet_hdr_t *old_eth_pkt, old_len, uint8_t *icmp_pkt, int icmp_type);
+sr_ethernet_hdr_t* gen_eth_frame (sr_ethernet_hdr_t *old_eth_pkt, int old_len, uint8_t *icmp_pkt, int icmp_type);
 
 void send_icmp_echo_request(struct sr_instance *sr, uint8_t *packet, char *interface);
 

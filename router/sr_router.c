@@ -104,7 +104,7 @@ void sr_arp_handler(struct sr_instance* sr,
 
             /* If the packet is a reply */
             case arp_op_reply:
-                handle_arp_reply(sr, interface, arpReq);
+                handle_arp_reply(sr, arpReq);
                 break;
             default:
                 fprintf(stderr, "Invalid Ethernet Type: %d\n", frame);
@@ -137,13 +137,10 @@ void handle_arp_request(struct sr_instance* sr,
     }
 }
 
-void handle_arp_reply(struct sr_instance* sr,
-                    char* interface,
-                    struct sr_arpreq* arpReq) {
+void handle_arp_reply(struct sr_instance* sr, struct sr_arpreq* arpReq) {
     if (arpReq){
         struct sr_packet* currPkt = arpReq->packets;
         while(currPkt){
-            struct sr_if* sr_interface = sr_get_interface(sr, interface);
             sr_ethernet_hdr_t *etherhdr = (sr_ethernet_hdr_t *) currPkt->buf;
             sr_arp_hdr_t *arpHeader = (sr_arp_hdr_t *)(currPkt + sizeof(sr_ethernet_hdr_t));
 
