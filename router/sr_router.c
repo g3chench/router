@@ -74,7 +74,8 @@ void sr_arp_handler(struct sr_instance* sr,
                   uint8_t * packet,
                   unsigned int len,
                   char* interface,
-                  unsigned int minLen){
+                  unsigned int minLen,
+                  uint16_t frame){
     sr_arp_hdr_t *arpHeader = (sr_arp_hdr_t*)(packet + sizeof(sr_ethernet_hdr_t));
     /* Add ARP Header length to minLen with Ethernet header length */
     minLen += sizeof(sr_arp_hdr_t);
@@ -168,7 +169,7 @@ void sr_handlepacket(struct sr_instance* sr,
     switch(frame){
         /* If it's an ARP Packet */
         case ethertype_arp:
-            sr_arp_handler(sr, packet, len, interface, minLen);
+            sr_arp_handler(sr, packet, len, interface, minLen, frame);
             break;
 
         /* If it's an IP Packet */
