@@ -14,6 +14,10 @@
 			// data stored in the ICMP packet?
 
 
+// a global variable
+size_t eth_frame_size = sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_hdr_t) + ICMP_DATA_SIZE;
+
+
 /*
 * Return a newly constructed ICMP packet struct given the type, code 
   and length of data the packet holds and the pointer to that data 
@@ -161,51 +165,27 @@ sr_ethernet_hdr_t* gen_eth_frame (sr_ethernet_hdr_t *old_eth_pkt, old_len, uint8
 	return new_eth_pkt;
 }
 
-
-
-// a global variable that should prolly be at the top of this class
-size_t eth_frame_size = sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_hdr_t) + ICMP_DATA_SIZE;
 	
-void send_icmp_echo_request(struct sr_instance *sr, uint8_t *packet, unsigned int len, char *interface) {
+void send_icmp_echo_request(struct sr_instance *sr, uint8_t *packet, char *interface) {
 	sr_send_packet(sr, gen_icmp_packet(packet, 0), eth_frame_size, interface);
 }
 
 
-void send_icmp_net_unreachable(struct sr_instance *sr, uint8_t *packet, unsigned int len, char *interface) {
+void send_icmp_net_unreachable(struct sr_instance *sr, uint8_t *packet, char *interface) {
 	sr_send_packet(sr, gen_icmp_packet(packet, 3, 0), eth_frame_size, interface);
 }
 
 
-void send_icmp_host_unreachable(struct sr_instance *sr, uint8_t *packet, unsigned int len, char *interface) {
+void send_icmp_host_unreachable(struct sr_instance *sr, uint8_t *packet, char *interface) {
 	sr_send_packet(sr, gen_icmp_packet(packet, 3, 1), eth_frame_size, interface);
 }
 
 
-void send_icmp_port_unreachable(struct sr_instance *sr, uint8_t *packet, unsigned int len, char *interface) {
+void send_icmp_port_unreachable(struct sr_instance *sr, uint8_t *packet, char *interface) {
 	sr_send_packet(sr, gen_icmp_packet(packet, 3, 3), eth_frame_size, interface);
 }
 
 
-void send_icmp_time_exceeded(struct sr_instance *sr, uint8_t *packet, unsigned int len, char *interface) {
+void send_icmp_time_exceeded(struct sr_instance *sr, uint8_t *packet, char *interface) {
 	sr_send_packet(sr, gen_icmp_packet(packet, 11), eth_frame_size, interface);
 }
-
-
-
-
-/////////////////////Chris this is your code right??? gunna leave it
-	// here
-/* Send icmp host unreachable to source addr of all pkts waiting on this request */
-/*
-void send_icmp_unreachable(struct sr_instance *sr, struct sr_arpreq *req) {
-	struct sr_packet *packet = req->packets;
-
-    while (packet) {
-        // send stuff here
-        packet = packet->next;
-    }
-    // placeholder exit
-    exit(0);
-    
-}
-*/

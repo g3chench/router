@@ -35,22 +35,21 @@ void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req) {
     
     if (difftime(now, req->sent) > 1.0) {
         if (req->times_sent >= 5) {
-            send_icmp_unreachable(sr, req);
-            sr_arpreq_destroy(cache, req);
+            struct sr_packet *packet = req->packets;
+
+            // Send icmp host unreachable to source addr of all pkts waiting on this request
+            while (packet) {
+                send_icmp_host_unreachable(sr, packet, unsigned int len, sr_get_interface(sr, packet->iface));
+                packet = packet->next;
+            }
+
+            sr_arpreq_destroy(&sr->cache, req);
         }
     } else {
-        send_arpreq(sr, req);
+        handle_arp_reply(sr, req);
         req->sent = now;
         req->times_sent++;
     }
-}
-
-
-/* Send ARP request */
-void send_arpreq(struct sr_instance *sr, struct sr_arpreq *req) {
-    // send stuff here
-    // placeholder exit
-    exit(0);
 }
 
 
