@@ -24,7 +24,7 @@
 #include "sr_protocol.h"
 #include "sr_arpcache.h"
 #include "sr_utils.h"
-
+#include "sr_ip_handler.h"
 /*---------------------------------------------------------------------
  * Method: sr_init(void)
  * Scope:  Global
@@ -70,7 +70,7 @@ void sr_init(struct sr_instance* sr)
  *---------------------------------------------------------------------*/
 
 
-void sr_arp_handler(struct sr_instance* sr,
+void arp_handler(struct sr_instance* sr,
                   uint8_t * packet,
                   unsigned int len,
                   char* interface,
@@ -183,12 +183,12 @@ void sr_handlepacket(struct sr_instance* sr,
     switch(frame){
         /* If it's an ARP Packet */
         case ethertype_arp:
-            sr_arp_handler(sr, packet, len, interface, minLen, frame);
+            arp_handler(sr, packet, len, interface, minLen, frame);
             break;
 
         /* If it's an IP Packet */
         case ethertype_ip:
-            fprintf(stderr, "Do something IP..\n");
+            ip_handler(sr, packet, len, interface);
             break;
 
         /* If it's neither ARP nor IP Packet */
@@ -197,14 +197,5 @@ void sr_handlepacket(struct sr_instance* sr,
             break;
     }
 
-    /*if(frame == ethertype_arp){
-    fprintf("Do something ARP..\n");
-    }
-    else if (frame == ethertype_ip){
-    fprintf("Do something IP..\n");
-    }
-    else{
-    fprintf(stderr, "Unrecognized Ethernet Type\n");
-    }*/
 
 }/* end sr_ForwardPacket */
