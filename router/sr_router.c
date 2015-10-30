@@ -95,9 +95,8 @@ void sr_arp_handler(struct sr_instance* sr,
             switch (ntohs(arpHeader->ar_op)){
             /* If the packet is a request */
             case arp_op_request:
-
-                sr_ethernet_hdr_t* etherHeader = (sr_ethernet_hdr_t*)packet;
-                if (ntohl(sr_interface->ip) == nothl(arpHeader->ar_tip)){
+                sr_ethernet_hdr_t *etherHeader = (sr_ethernet_hdr_t *)packet;
+                if (ntohl(sr_interface->ip) == ntohl(arpHeader->ar_tip)){
                     memcpy(etherHeader->ether_dhost, etherHeader->ether_shost, ETHER_ADDR_LEN);
                     memcpy(etherHeader->ether_shost, sr_interface->addr, ETHER_ADDR_LEN);
 
