@@ -76,7 +76,7 @@ void sr_arp_handler(struct sr_instance* sr,
                   char* interface,
                   unsigned int minLen,
                   uint16_t frame){
-    sr_arp_hdr_t *arpHeader = (sr_arp_hdr_t*)(packet + sizeof(sr_ethernet_hdr_t));
+    sr_arp_hdr_t *arpHeader = (sr_arp_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t));
     /* Add ARP Header length to minLen with Ethernet header length */
     minLen += sizeof(sr_arp_hdr_t);
 
@@ -93,10 +93,12 @@ void sr_arp_handler(struct sr_instance* sr,
         arpHeader->ar_pln == 0x04 &&
         ntohs (arpHeader->ar_pro) == ethertype_ip){
             struct sr_if* sr_interface = sr_get_interface(sr, interface);
+            sr_ethernet_hdr_t *etherHeader = (sr_ethernet_hdr_t *)packet;
+            struct sr_arpreq* arpReq = sr_arpcache_insert(&sr->cache, arpHeader->ar_sha, arpHeader->ar_sip);
+
             switch (ntohs(arpHeader->ar_op)){
             /* If the packet is a request */
             case arp_op_request:
-                sr_ethernet_hdr_t *etherHeader = (sr_ethernet_hdr_t *)packet;
                 if (ntohl(sr_interface->ip) == ntohl(arpHeader->ar_tip)){
                     memcpy(etherHeader->ether_dhost, etherHeader->ether_shost, ETHER_ADDR_LEN);
                     memcpy(etherHeader->ether_shost, sr_interface->addr, ETHER_ADDR_LEN);
@@ -115,8 +117,6 @@ void sr_arp_handler(struct sr_instance* sr,
 
             /* If the packet is a reply */
             case arp_op_reply:
-                struct sr_arpreq *arpReq = sr_arpcache_insert(&sr->cache, arpHeader->ar_sha, arpHeader->ar_sip);
-
                 if (arpReq){
                     struct sr_packet* currPkt = arpReq->packets;
                     while(currPkt){
