@@ -1,0 +1,1 @@
+gcc -c -g -Wall -ansi -D_DEBUG_ -D_GNU_SOURCE -D_LINUX_ sr_ip_handler.c -o sr_ip_handler.o

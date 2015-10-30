@@ -105,7 +105,7 @@ void ip_handler(struct sr_instance* sr,
           struct sr_rt *current_node = sr->routing_table;
           
           while (current_node) {
-            if (current_node->dest.s_addr == ip_hdr->mask.s_addr & ip_hdr->ip_dst) {
+            if (ip_hdr->dst.s_addr == current_node->mask.s_addr & ip_hdr->ip_dst) {
 
                 /* Build the outgoing ethernet frame to forward to another router */
                 sr_ethernet_hdr_t *eth_hdr = (sr_ethernet_hdr_t*) (packet);
@@ -127,7 +127,14 @@ void ip_handler(struct sr_instance* sr,
 
                 } else {
                     /* Cannot find a routing table entry. We try to request */
-                    send_arp_req(sr, sr_arpcache_queuereq(sr->cache, current_node->gw.s_addr, packet, len, interface));
+					/* Construct arp_header*/
+
+                    struct sr_arp_hdr_t *arp_hdr = malloc(sizeof(sr_arp_hdr_t));
+					 
+				
+					
+					handle_arp_req(sr, packet, len, interface, sr->if_list, , (sr_ethernet_hdr*)(packet)
+							);
                     return ;
                 }
               }
