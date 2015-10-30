@@ -75,22 +75,25 @@ void sr_arp_hanlder(struct sr_instance* sr,
                   unsigned int len,
                   char* interface,
                   unsigned int minLen){
-    minLen += sizeof(sr_arp_hdr_t);
     sr_arp_hdr_t *arpHeader = (sr_arp_hdr_t*)(packet + sizeof(sr_ethernet_hdr_t));
-    if (minLen > len){
-        frpint(strderr, "Invalid ARP header length\n");
-    } else if (arpHeader->ar_hrd != htons(arp_hrd_ethernet)){
-        fprint(strderr, "Invalid ARP hardware format\n")
-    } else {
-        //To check ARP Packets, just run print_hdrs(packet, len)
-        //define ARP header
+    /* Add ARP Header length to minLen with Ethernet header length */
+    minLen += sizeof(sr_arp_hdr_t);
 
+    /* if packet size is smaller than the total minimum length
+    of ARP Header and Ethernet Header combined, then output error*/
+    if (minLen > len){
+        frpint(strderr, "ARP Header length is too large\n");
+    } else if (arpHeader->ar_hrd != htons(arp_hrd_ethernet)){
+        /* If ARP packet format is incorrect, then output error */
+        fprint(strderr, "Invalid ARP hardware format\n");
+    } else {
         if (ntohs(arpHeader->ar_hrd) == arp_hrd_ethernet &&
         arpHeader->ar_hln == 0x06 &&
         arpHeader->ar_pln == 0x04 &&
         ntohs (arpHeader->ar_pro) == ethertype_ip){
 
             switch (ntohs(arpHeader->ar_op)){
+            /* If the packet is a request */
             case arp_op_request:
                 struct sr_if* sr_interface;
                 sr_ethernet_hdr_t* etherHeader = (sr_ethernet_hdr_t*)packet;
@@ -104,11 +107,13 @@ void sr_arp_hanlder(struct sr_instance* sr,
 
                     memcpy(arpHeader->ar_tha, arpHeader->ar_sha, ETHER_ADDR_LEN);
                     memcpy(arpHeader->ar_sha, sr_interface->addr, ETHER_ADDR_LEN);
-
+                    /* Send  packet (ethernet header included!) of length 'len'
+                    * to the server to be injected onto the wire.*/
                     sr_send_packet(sr, packet, len, interface);
                 }
             break;
 
+            /* If the packet is a reply */
             case arp_op_reply:
                 struct sr_arpreq *arpReq = sr_arpcache_insert(&sr->cache, arpHeader->ar_sha, arpHeader->ar_sip);
                 struct sr_if* sr_interface;
