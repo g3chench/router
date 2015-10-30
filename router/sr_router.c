@@ -139,9 +139,9 @@ void handle_arp_request(struct sr_instance* sr,
 
 void handle_arp_reply(struct sr_instance* sr,
                     struct sr_arpreq* arpReq) {
-    if (arpReq){
+    if (arpReq) {
         struct sr_packet* currPkt = arpReq->packets;
-        while (currPkt){
+        while (currPkt) {
             sr_ethernet_hdr_t *etherhdr = (sr_ethernet_hdr_t *) currPkt->buf;
             sr_arp_hdr_t *arpHeader = (sr_arp_hdr_t *)(currPkt + sizeof(sr_ethernet_hdr_t));
 
