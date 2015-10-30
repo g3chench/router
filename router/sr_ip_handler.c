@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include <string.h>
-
+#include <stdlib.h>
 
 #include "sr_if.h"
 #include "sr_rt.h"
@@ -34,9 +34,10 @@ void ip_handler(struct sr_instance* sr,
     /* store the ip packet from the ethernet frame */
     sr_ip_hdr_t *ip_hdr = (sr_ip_hdr_t *) (packet + sizeof(sr_ethernet_hdr_t));
     uint8_t *ip_pkt;
-    //fprintf(stdout, "Received IP %s from %s on %s\n", 
-    //                ip_hdr->ip==ip_protocol_icmp?"ICMP":"IP", 
-    //                ip_)
+    /* fprintf(stdout, "Received IP %s from %s on %s\n", 
+                    ip_hdr->ip==ip_protocol_icmp?"ICMP":"IP", 
+                    ip_)
+    */
 
 
     /* sanity check the IP packet */
@@ -104,12 +105,12 @@ void ip_handler(struct sr_instance* sr,
 
                   /* Build the outgoing ethernet frame to forward to another router */
                   struct sr_if *out_interface = sr_get_interface(sr, current_node->interface);
-                  struct sr_ethernet_hdr_t *eth_hdr = (sr_ethernet_hdr_t*) (packet);
+                  sr_ethernet_hdr_t *eth_hdr = (sr_ethernet_hdr_t*) (packet);
                   
                   memcpy(eth_hdr->ether_shost, out_interface->addr, ETHER_ADDR_LEN);
 
-                  // search for the new ethernet frame's destination MAC address ARP cache
-                  struct sr_arpentry *current_arp = sr_arpcache_lookup(&(sr->cache), current_node->gw.s_addr);
+                  /* search for the new ethernet frame's destination MAC address ARP cache */
+                  struct sr_arpentry *current_arp = sr_arpcache_lookup(sr->cache, current_node->gw.s_addr);
                   
                   /* found a hit in the ARP cache*/
                   if (current_arp) {
@@ -123,7 +124,7 @@ void ip_handler(struct sr_instance* sr,
 
                   } else {
                       /* Cannot find a routing table entry. We try to request */
-                      send_arp_req(sr, sr_arpcache_queuereq(&(sr->cache), current_node->gw.s_addr, packet, len, interface));
+                      send_arp_req(sr, sr_arpcache_queuereq(sr->cache, current_node->gw.s_addr, packet, len, interface));
                       return ;
                   }
                 }
