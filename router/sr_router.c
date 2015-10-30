@@ -82,10 +82,10 @@ void sr_arp_handler(struct sr_instance* sr,
     /* if packet size is smaller than the total minimum length
     of ARP Header and Ethernet Header combined, then output error*/
     if (minLen > len){
-        frpint(strderr, "ARP Header length is too large\n");
+        fprintf(strderr, "ARP Header length is too large\n");
     } else if (arpHeader->ar_hrd != htons(arp_hrd_ethernet)){
         /* If ARP packet format is incorrect, then output error */
-        fprint(strderr, "Invalid ARP hardware format\n");
+        fprintf(strderr, "Invalid ARP hardware format\n");
     } else {
         if (ntohs(arpHeader->ar_hrd) == arp_hrd_ethernet &&
         arpHeader->ar_hln == 0x06 &&
