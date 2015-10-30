@@ -125,14 +125,14 @@ void sr_arp_handler(struct sr_instance* sr,
                         memcpy(etherhdr->ether_dhost, arpHeader->ar_sha, ETHER_ADDR_LEN);
                         memcpy(etherhdr->ether_shost, arpHeader->ar_tha, ETHER_ADDR_LEN);
 
-                        sr_send_packet(sr, currPkt->buf, currPkt->len, arpReq->ip, sr_interface);
+                        sr_send_packet(sr, currPkt->buf, currPkt->len, currPkt->iface);
                         currPkt = currPkt->next;
                     }
                     sr_arpreq_destroy(&sr->cache, arpReq);
                 }
                 break;
             default:
-                printf("Invalid Ethernet Type: %d\n", frame);
+                fprintf(stderr, "Invalid Ethernet Type: %d\n", frame);
             }
         }
     }
@@ -158,7 +158,7 @@ void sr_handlepacket(struct sr_instance* sr,
     /* If the packet size is smaller than the
      minimum Ethernet Header size, output error */
     if (minLen > len){
-        fprintf(strderr, "Packet length is too small\n");
+        fprintf(stderr, "Packet length is too small\n");
         return;
     }
 
@@ -173,7 +173,7 @@ void sr_handlepacket(struct sr_instance* sr,
 
         /* If it's an IP Packet */
         case ethertype_ip:
-            fprintf("Do something IP..\n");
+            fprintf(stderr, "Do something IP..\n");
             break;
 
         /* If it's neither ARP nor IP Packet */
