@@ -144,7 +144,7 @@ void handle_arp_reply(struct sr_instance* sr,
     if (arpReq){
         struct sr_packet* currPkt = arpReq->packets;
         while(currPkt){
-            sr_interface = sr_get_interface(sr, interface);
+            sr_interface = sr_get_interface(sr, currPkt->iface);
             sr_ethernet_hdr_t *etherhdr = (sr_ethernet_hdr_t *) currPkt->buf;
 
             memcpy(etherhdr->ether_dhost, arpHeader->ar_sha, ETHER_ADDR_LEN);
