@@ -90,7 +90,7 @@ void ip_handler(struct sr_instance* sr,
         }
 
 
-	// This packet was sent to me
+    /* This packet was sent to me */
     } else {
         printf("Forward this packet to another router...\n");
         

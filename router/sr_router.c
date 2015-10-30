@@ -39,7 +39,7 @@ void sr_init(struct sr_instance* sr)
     assert(sr);
 
     /* Initialize cache and cache cleanup thread */
-    sr_arpcache_init(&(sr->cache));
+    sr_arpcache_init(sr->cache);
 
     pthread_attr_init(&(sr->attr));
     pthread_attr_setdetachstate(&(sr->attr), PTHREAD_CREATE_JOINABLE);
@@ -94,7 +94,7 @@ void arp_handler(struct sr_instance* sr,
         ntohs (arpHeader->ar_pro) == ethertype_ip){
             struct sr_if* sr_interface = sr_get_interface(sr, interface);
             sr_ethernet_hdr_t *etherHeader = (sr_ethernet_hdr_t *)packet;
-            struct sr_arpreq* arpReq = sr_arpcache_insert(&sr->cache, arpHeader->ar_sha, arpHeader->ar_sip);
+            struct sr_arpreq* arpReq = sr_arpcache_insert(sr->cache, arpHeader->ar_sha, arpHeader->ar_sip);
 
             switch (ntohs(arpHeader->ar_op)){
             /* If the packet is a request */
@@ -141,7 +141,7 @@ void handle_arp_reply(struct sr_instance* sr,
                     struct sr_arpreq* arpReq) {
     if (arpReq){
         struct sr_packet* currPkt = arpReq->packets;
-        while(currPkt){
+        while (currPkt){
             sr_ethernet_hdr_t *etherhdr = (sr_ethernet_hdr_t *) currPkt->buf;
             sr_arp_hdr_t *arpHeader = (sr_arp_hdr_t *)(currPkt + sizeof(sr_ethernet_hdr_t));
 
@@ -151,7 +151,7 @@ void handle_arp_reply(struct sr_instance* sr,
             sr_send_packet(sr, currPkt->buf, currPkt->len, currPkt->iface);
             currPkt = currPkt->next;
         }
-        sr_arpreq_destroy(&sr->cache, arpReq);
+        sr_arpreq_destroy(sr->cache, arpReq);
     }
 }
 
