@@ -137,13 +137,14 @@ void handle_arp_request(struct sr_instance* sr,
     }
 }
 
-void handle_arp_reply(struct sr_instance* sr,
-                    struct sr_arpreq* arpReq) {
+void handle_arp_reply(struct sr_instance* sr, struct sr_arpreq* arpReq) {
     if (arpReq){
         struct sr_packet* currPkt = arpReq->packets;
         while(currPkt){
-            sr_interface = sr_get_interface(sr, interface);
+            char* interface = sr_get_interface(sr, currPkt->iface);
+            struct sr_if* sr_interface = sr_get_interface(sr, interface);
             sr_ethernet_hdr_t *etherhdr = (sr_ethernet_hdr_t *) currPkt->buf;
+            sr_arp_hdr_t *arpHeader = (sr_arp_hdr_t *)(currPkt + sizeof(sr_ethernet_hdr_t));
 
             memcpy(etherhdr->ether_dhost, arpHeader->ar_sha, ETHER_ADDR_LEN);
             memcpy(etherhdr->ether_shost, arpHeader->ar_tha, ETHER_ADDR_LEN);
