@@ -34,7 +34,7 @@ You may want to create additional structs for ICMP messages for
   word boundaries:
 
 */  
-uint8_t* gen_icmp_packet (uint8_t *packet, int type, int code=0) {
+uint8_t* gen_icmp_packet (uint8_t *packet, int type, int code) {
 	uint8_t* packet; 
 	switch (type) {
 
