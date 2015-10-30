@@ -11,12 +11,9 @@
 #include "sr_ip_handler.h"
 
 /*
-sr_router must check if it's an IP packet
-then call this function
-*/
-
-
-
+ * sr_router must check if it's an IP packet
+ * then call this function
+ */
 void ip_handler(struct sr_instance* sr, 
         uint8_t *packet,
         unsigned int len, 
@@ -33,7 +30,7 @@ void ip_handler(struct sr_instance* sr,
                       ----------------------------
     */
     /* store the ip packet from the ethernet frame */
-    sr_ip_hdr_t *ip_hdr = packet + sizeof(sr_ethernet_hdr_t);
+    sr_ip_hdr_t *ip_hdr = (sr_ip_hdr_t *) (packet + sizeof(sr_ethernet_hdr_t));
     uint8_t *ip_pkt;
     //fprintf(stdout, "Received IP %s from %s on %s\n", 
     //                ip_hdr->ip==ip_protocol_icmp?"ICMP":"IP", 
@@ -41,31 +38,34 @@ void ip_handler(struct sr_instance* sr,
 
 
     /* sanity check the IP packet */
-    min_len = sizeof(sr_ip_hdr_t);
+    size_t min_len = sizeof(sr_ip_hdr_t);
 
-    if (ip_hdr->ip_len) < min_len) {
-        fprintf("Error: Invalid IP packet\n Length of the frame is incorrect\nDropping packet...\n");
+    if (ip_hdr->ip_len < min_len) {
+        fprintf(stderr, "Error: Invalid IP packet\n Length of the frame is incorrect\nDropping packet...\n");
         return ;
     } 
 
-    uint8_t *icmp_cargo = ip_hdr + sizeof(sr_ip_hdr_t);
-    if (ip_hdr->ip_sum != cksum(icmp_cargo)) {
-        fprintf("Error: Invalid IP packet\n Checksum does not match\nDropping packet...\n");
-        return ;
+    uint8_t *icmp_cargo = (uint8_t *) (ip_hdr + sizeof(sr_ip_hdr_t));
+  	unsigned int cargo_len = len - sizeof(sr_ethernet_hdr_t) - sizeof(sr_ip_hdr_t);
+      
+  	if (ip_hdr->ip_sum != cksum(icmp_cargo, cargo_len)) {
+          fprintf(stderr, "Error: Invalid IP packet\n Checksum does not match\nDropping packet...\n");
+          return ;
     }
 
 
     /* else this IP packet is valid: */
     
-    /* Check the the ip packet is being sent to this host, sr_router */
+    /* Check that the ip packet is being sent to this host, sr_router */
     /* refer to sr_if.h*/
     int sent_to_me = 0;
-    struct sr_if* interface = sr->if_list;
-    while (interface != 0) {
-        if (interface->ip == ip_hdr->ip_dest) {
+    struct sr_if* current_interface = sr->if_list;
+    while (current_interface) {
+        if (sr_get_interface_from_ip(sr, ip_hdr->ip_dest) {
             sent_to_me = 1;
             break;
         }
+		current_interface = current_interface->next;
     }
 
     if (sent_to_me == 1) {
