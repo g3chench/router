@@ -82,22 +82,22 @@ void sr_arp_handler(struct sr_instance* sr,
     /* if packet size is smaller than the total minimum length
     of ARP Header and Ethernet Header combined, then output error*/
     if (minLen > len){
-        fprintf(strderr, "ARP Header length is too large\n");
+        fprintf(stderr, "ARP Header length is too large\n");
     } else if (arpHeader->ar_hrd != htons(arp_hrd_ethernet)){
         /* If ARP packet format is incorrect, then output error */
-        fprintf(strderr, "Invalid ARP hardware format\n");
+        fprintf(stderr, "Invalid ARP hardware format\n");
     } else {
         if (ntohs(arpHeader->ar_hrd) == arp_hrd_ethernet &&
         arpHeader->ar_hln == 0x06 &&
         arpHeader->ar_pln == 0x04 &&
         ntohs (arpHeader->ar_pro) == ethertype_ip){
-
+            struct sr_if* sr_interface = sr_get_interface(sr, interface);
             switch (ntohs(arpHeader->ar_op)){
             /* If the packet is a request */
             case arp_op_request:
-                struct sr_if* sr_interface;
+
                 sr_ethernet_hdr_t* etherHeader = (sr_ethernet_hdr_t*)packet;
-                if (ntohl(struct sr_if* sr_interface->ip) == nothl(arpHeader->ar_tip)){
+                if (ntohl(sr_interface->ip) == nothl(arpHeader->ar_tip)){
                     memcpy(etherHeader->ether_dhost, etherHeader->ether_shost, ETHER_ADDR_LEN);
                     memcpy(etherHeader->ether_shost, sr_interface->addr, ETHER_ADDR_LEN);
 
@@ -116,7 +116,7 @@ void sr_arp_handler(struct sr_instance* sr,
             /* If the packet is a reply */
             case arp_op_reply:
                 struct sr_arpreq *arpReq = sr_arpcache_insert(&sr->cache, arpHeader->ar_sha, arpHeader->ar_sip);
-                struct sr_if* sr_interface;
+
                 if (arpReq){
                     struct sr_packet* currPkt = arpReq->packets;
                     while(currPkt){
