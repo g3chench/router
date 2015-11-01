@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <assert.h>
+#include <string.h>
 
 #include "sr_if.h"
 #include "sr_rt.h"
@@ -33,7 +34,7 @@ void arp_handler(struct sr_instance* sr,
         ntohs (arpHeader->ar_pro) == ethertype_ip){
             struct sr_if* sr_interface = sr_get_interface(sr, interface);
             sr_ethernet_hdr_t *etherHeader = (sr_ethernet_hdr_t *)packet;
-            struct sr_arpreq* arpReq = sr_arpcache_insert(sr->cache, arpHeader->ar_sha, arpHeader->ar_sip);
+            struct sr_arpreq* arpReq = sr_arpcache_insert(&sr->cache, arpHeader->ar_sha, arpHeader->ar_sip);
 
             switch (ntohs(arpHeader->ar_op)){
             /* If the packet is a request */
@@ -90,6 +91,6 @@ void handle_arp_reply(struct sr_instance* sr,
             sr_send_packet(sr, currPkt->buf, currPkt->len, currPkt->iface);
             currPkt = currPkt->next;
         }
-        sr_arpreq_destroy(sr->cache, arpReq);
+        sr_arpreq_destroy(&sr->cache, arpReq);
     }
 }
