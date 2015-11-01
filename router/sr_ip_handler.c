@@ -32,7 +32,7 @@ struct sr_if *get_output_interface(struct sr_instance *sr, uint32_t address) {
 }
 
 void ip_handler(struct sr_instance* sr, 
-        struct uint_8* packet,
+        uint8_t* packet,
         unsigned int len, 
         char *interface) {
   
