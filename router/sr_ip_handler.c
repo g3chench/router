@@ -90,27 +90,27 @@ void ip_handler(struct sr_instance* sr,
             fprintf(stderr, "Error: this IP packet uses an unrecognized protocol.\nDropping packet...\n");
         }
 
-    /* This packet was sent to me */
+  /* This packet was sent to me */
   } else {
       printf("Forward this packet to another router...\n");
       
       if (ip_hdr->ip_ttl <= 1) {
         fprintf(stderr, "Packet's TTL expired");
-        send_icmp_time_exceeded(sr, ip_hdr, interface);
+        send_icmp_time_exceeded(sr, packet, interface);
         return ;
 
       } else {
           /* search through linked list of nodes for forwarding
           * table entry using LPM.
           */
+
           struct sr_rt *current_node = sr->routing_table;
-        
+
           while (current_node) {
-              if (current_node->dest.s_addr == ip_hdr->ip_dst & current_node->mask.s_addr) {
+              if (ip_hdr->ip_dst == (current_node->dest.s_addr & current_node->mask.s_addr)) {
 
                 /* Build the outgoing ethernet frame to forward to another router */
                 sr_ethernet_hdr_t *eth_hdr = (sr_ethernet_hdr_t*) (packet);
-                
                 memcpy(eth_hdr->ether_shost, out_interface->addr, ETHER_ADDR_LEN);
 
                 /* search for the new ethernet frame's destination MAC address ARP cache */
@@ -123,24 +123,23 @@ void ip_handler(struct sr_instance* sr,
                     /* remember ip_hl:4 in sr_protocol.h*/
                     ip_hdr->ip_sum = cksum(ip_hdr, ip_hdr->ip_hl*4);
                     free(current_arp);
-                    sr_send_packet(sr, packet, len, current_node->interface);
+                    sr_send_packet(sr, (uint8_t *)(packet), len, current_node->interface);
                     return;
+
+                /* No entry found in ARP cache, send ARP request */
+                } else {
+                    struct sr_arpreq *req = sr_arpcache_queuereq(&sr->cache, current_node->gw.s_addr, (uint8_t*)packet, len, (char*)interface);
+                    handle_arpreq(sr, req);
+                    /*ip_hdr->ip_ttl--; DO  I NEED THIS LINE??*/
+                    return ;
                 }
               }
               /* go to the next node in the rt_table */
               current_node = current_node->next;
           } /*end of while loop*/
 
-
-          /* Cannot find a routing table entry. add an arp request to the queue*/
-          /* INCOMPLETE */
-          //send_icmp_host_unreachable(sr, packet, interface);
-
-          //struct sr_arpreq *req = sr_arpcache_queuereq(sr->cache, ip, packet, len, interface)
-
-          return ;
-
-      send_icmp_net_unreachable(sr->cache, , packet, interface);   
+          
+          send_icmp_host_unreachable(sr, packet, interface);   
       }
       return;
   } /*end of else for line 78 if block */

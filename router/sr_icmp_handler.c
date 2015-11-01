@@ -10,11 +10,11 @@
 #include "sr_utils.h"
 #include "sr_icmp_handler.h"
 
-// CHECK/FIX do we have to pad the ICMP cargo with 0s if there is no
-			// data stored in the ICMP packet?
+/* CHECK/FIX do we have to pad the ICMP cargo with 0s if there is no
+data stored in the ICMP packet? */
 
 
-// a global variable
+/* a global variable*/
 size_t eth_frame_size = sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_hdr_t) + ICMP_DATA_SIZE;
 
 
@@ -42,8 +42,8 @@ sr_icmp_hdr_t* gen_icmp_packet (struct sr_packet *packet, int type, int code) {
 			icmp_hdr->icmp_type = 0;
 		    icmp_hdr->icmp_code = 0;
 			
-		    // REMOVE THIS NOTE:
-		    // uint16_t cksum(const void *_data, int len);
+		    /* REMOVE THIS NOTE:
+		    uint16_t cksum(const void *_data, int len); */
 			icmp_hdr->icmp_sum = cksum(icmp_hdr + sizeof(sr_icmp_hdr_t), ICMP_DATA_SIZE);
 			icmp_pkt = icmp_hdr;
 		
@@ -76,7 +76,7 @@ sr_icmp_hdr_t* gen_icmp_packet (struct sr_packet *packet, int type, int code) {
 					icmp_hdr->icmp_code = 3;
 
 				/* invalid icmp type to use*/
-				// FIX/CHECK but it defaults to 0 anyways..
+				/* FIX/CHECK but it defaults to 0 anyways..*/
 				default:
 					fprintf("unsupported ICMP code specified.\n");
 					icmp_pkt = NULL;
