@@ -66,7 +66,7 @@ int sr_read_from_server(struct sr_instance* sr);
 
 /* -- sr_router.c -- */
 void sr_init(struct sr_instance* );
-void sr_handlepacket(struct sr_instance* sr, uint8_t * packet, unsigned int len, char* interface);
+void sr_handlepacket(struct sr_instance* sr, uint8_t* packet, unsigned int len, char* interface);
 
 /* -- sr_if.c -- */
 void sr_add_interface(struct sr_instance* sr, const char* name);

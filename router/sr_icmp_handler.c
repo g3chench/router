@@ -17,7 +17,6 @@ data stored in the ICMP packet? */
 /* a global variable*/
 size_t eth_frame_size = sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_hdr_t) + ICMP_DATA_SIZE;
 
-
 /*
 * Return a newly constructed ICMP packet struct given the type, code 
   and length of data the packet holds and the pointer to that data 
@@ -30,23 +29,25 @@ You may want to create additional structs for ICMP messages for
  convenience, but make sure to use the packed attribute so that
   the compiler doesn’t try to align the fields in the struct to 
   word boundaries:
+*/
 
-*/  
-sr_icmp_hdr_t* gen_icmp_packet (struct sr_packet *packet, int type, int code) {
+
+/*
+ * Return an ICMP packet header given its type and code. 
+ */
+*/
+sr_icmp_hdr_t* gen_icmp_packet (uint8_t *packet, int type, int code) {
 	switch (type) {
-		struct sr_packet *icmp_pkt;
+		struct sr_icmp_hdr_t *icmp_pkt;
 
 		case 0:
 			/* echo reply*/
 			sr_icmp_hdr_t *icmp_hdr = (sr_icmp_hdr_t*)(packet + sizeof(sr_ethernet_hdr_t) + sizeof(sr_icmp_hdr_t));
 			icmp_hdr->icmp_type = 0;
 		    icmp_hdr->icmp_code = 0;
-			
-		    /* REMOVE THIS NOTE:
-		    uint16_t cksum(const void *_data, int len); */
 			icmp_hdr->icmp_sum = cksum(icmp_hdr + sizeof(sr_icmp_hdr_t), ICMP_DATA_SIZE);
 			icmp_pkt = icmp_hdr;
-		
+
 
 		case 11:
 			/* time exceeded */
@@ -55,7 +56,7 @@ sr_icmp_hdr_t* gen_icmp_packet (struct sr_packet *packet, int type, int code) {
 		    icmp_hdr->icmp_code = 0;
 			icmp_hdr->icmp_sum = cksum(icmp_hdr + sizeof(sr_icmp_hdr_t), ICMP_DATA_SIZE);
 			icmp_pkt = icmp_hdr;
-		
+
 
 		case 3:
 			sr_icmp_t3_hdr_t icmp_hdr = malloc(sizeof(sr_icmp_t3_hdr_t));
@@ -151,7 +152,7 @@ sr_ethernet_hdr_t* gen_eth_frame (sr_ethernet_hdr_t *old_eth_pkt, old_len, uint8
 
 
 	/* package the three protocol packets into one*/
-	uint8_t *new_eth_pkt = malloc((struct sr_packet)(sizeof(sr_ethernet_hdr_t) ));
+	uint8_t *new_eth_pkt = malloc();
 	uint8_t *eth_cargo = new_eth_pkt + sizeof(sr_ethernet_hdr_t);
 	uint8_t *ip_cargo = eth_cargo + sizeof(sr_ip_hdr_t);
 	
@@ -163,26 +164,26 @@ sr_ethernet_hdr_t* gen_eth_frame (sr_ethernet_hdr_t *old_eth_pkt, old_len, uint8
 }
 
 	
-void send_icmp_echo_request(struct sr_instance *sr, struct sr_packet *packet, struct sr_if *interface) {
+void send_icmp_echo_request(struct sr_instance *sr, uint8_t *packet, struct sr_if *interface) {
 	sr_send_packet(sr, gen_icmp_packet(packet, 0), eth_frame_size, interface);
 }
 
 
-void send_icmp_net_unreachable(struct sr_instance *sr, struct sr_packet *packet, struct sr_if *interface) {
+void send_icmp_net_unreachable(struct sr_instance *sr, uint8_t *packet, struct sr_if *interface) {
 	sr_send_packet(sr, gen_icmp_packet(packet, 3, 0), eth_frame_size, interface);
 }
 
 
-void send_icmp_host_unreachable(struct sr_instance *sr, struct sr_packet *packet, struct sr_if *interface) {
+void send_icmp_host_unreachable(struct sr_instance *sr, uint8_t *packet, struct sr_if *interface) {
 	sr_send_packet(sr, gen_icmp_packet(packet, 3, 1), eth_frame_size, interface);
 }
 
 
-void send_icmp_port_unreachable(struct sr_instance *sr, struct sr_packet *packet, struct sr_if *interface) {
+void send_icmp_port_unreachable(struct sr_instance *sr, uint8_t *packet, struct sr_if *interface) {
 	sr_send_packet(sr, gen_icmp_packet(packet, 3, 3), eth_frame_size, interface);
 }
 
 
-void send_icmp_time_exceeded(struct sr_instance *sr, struct sr_packet *packet, struct sr_if *interface) {
+void send_icmp_time_exceeded(struct sr_instance *sr, uint8_t *packet, struct sr_if *interface) {
 	sr_send_packet(sr, gen_icmp_packet(packet, 11), eth_frame_size, interface);
 }
