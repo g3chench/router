@@ -33,7 +33,6 @@
 /* forward declare */
 struct sr_if;
 struct sr_rt;
-struct sr_arpcache;
 
 /* ----------------------------------------------------------------------------
  * struct sr_instance
@@ -52,7 +51,7 @@ struct sr_instance
     struct sockaddr_in sr_addr; /* address to server */
     struct sr_if* if_list; /* list of interfaces */
     struct sr_rt* routing_table; /* routing table */
-    struct sr_arpcache* cache;   /* ARP cache */
+    struct sr_arpcache cache;   /* ARP cache */
     pthread_attr_t attr;
     FILE* logfile;
 };
@@ -68,9 +67,6 @@ int sr_read_from_server(struct sr_instance* sr);
 /* -- sr_router.c -- */
 void sr_init(struct sr_instance* );
 void sr_handlepacket(struct sr_instance* sr, uint8_t * packet, unsigned int len, char* interface);
-void arp_handler(struct sr_instance* sr, uint8_t * packet, unsigned int len, char* interface, unsigned int minLen, uint16_t frame);
-void handle_arp_request(struct sr_instance* sr, uint8_t * packet, unsigned int len, char* interface, struct sr_if* sr_interface, sr_arp_hdr_t *arpHeader, sr_ethernet_hdr_t *etherHeader);
-void handle_arp_reply(struct sr_instance* sr, struct sr_arpreq* arpReq);
 
 /* -- sr_if.c -- */
 void sr_add_interface(struct sr_instance* sr, const char* name);

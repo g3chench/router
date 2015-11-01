@@ -11,6 +11,7 @@
 #include "sr_utils.h"
 #include "sr_ip_handler.h"
 #include "sr_icmp_handler.h"
+#include "sr_arp_handler.h"
 
 /*
  * sr_router must check if it's an IP packet
@@ -113,7 +114,7 @@ void ip_handler(struct sr_instance* sr,
                 memcpy(eth_hdr->ether_shost, out_interface->addr, ETHER_ADDR_LEN);
 
                 /* search for the new ethernet frame's destination MAC address ARP cache */
-                struct sr_arpentry *current_arp = sr_arpcache_lookup(sr->cache, current_node->gw.s_addr);
+                struct sr_arpentry *current_arp = sr_arpcache_lookup(&sr->cache, current_node->gw.s_addr);
                 
                 /* found a hit in the ARP cache*/
                 if (current_arp) {
@@ -127,7 +128,7 @@ void ip_handler(struct sr_instance* sr,
 
                 } else {
                     /* Cannot find a routing table entry. We try to request */
-                    send_arp_req(sr, sr_arpcache_queuereq(sr->cache, current_node->gw.s_addr, packet, len, interface));
+                    send_arp_req(sr, sr_arpcache_queuereq(&sr->cache, current_node->gw.s_addr, packet, len, interface));
                     return ;
                 }
               }

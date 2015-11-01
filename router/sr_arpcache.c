@@ -7,10 +7,10 @@
 #include <sched.h>
 #include <string.h>
 #include "sr_arpcache.h"
-#include "sr_router.h"
 #include "sr_if.h"
 #include "sr_protocol.h"
 #include "sr_icmp_handler.h"
+#include "sr_arp_handler.h"
 
 /*
   This function gets called every second. For each request sent out, we keep
@@ -19,7 +19,7 @@
 */
 void sr_arpcache_sweepreqs(struct sr_instance *sr) {
 
-    struct sr_arpreq *req = sr->cache->requests;
+    struct sr_arpreq *req = sr->cache.requests;
 
     while (req) {
         struct sr_arpreq *nextReq = req->next;
