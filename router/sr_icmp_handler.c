@@ -26,7 +26,6 @@ size_t eth_frame_size = sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) + sizeof
 */
 
 /* FIX/CHECK from the assignment
-/*
 You may want to create additional structs for ICMP messages for
  convenience, but make sure to use the packed attribute so that
   the compiler doesn’t try to align the fields in the struct to 
