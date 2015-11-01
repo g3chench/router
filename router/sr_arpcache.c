@@ -40,7 +40,7 @@ void handle_arpreq(struct sr_instance *sr, struct sr_arpreq* req) {
 
             /* Send icmp host unreachable to source addr of all pkts waiting on this request */
             while (packet) {
-                send_icmp_host_unreachable(sr, packet, sr_get_interface(sr, packet->iface));
+                send_icmp_host_unreachable(sr, (uint8_t*) packet, sr_get_interface(sr, packet->iface));
                 packet = packet->next;
             }
 
