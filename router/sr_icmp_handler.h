@@ -19,7 +19,7 @@ void send_icmp_echo_request(struct sr_instance *sr, uint8_t *packet, char *inter
 
 void send_icmp_net_unreachable(struct sr_instance *sr, uint8_t *packet, char *interface);
 
-void send_icmp_host_unreachable(struct sr_instance *sr, uint8_t *packet, struct sr_if*);
+void send_icmp_host_unreachable(struct sr_instance *sr, uint8_t *packet, char *interface);
 
 void send_icmp_port_unreachable(struct sr_instance *sr, uint8_t *packet, char *interface);
 

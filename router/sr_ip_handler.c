@@ -11,24 +11,23 @@
 #include "sr_utils.h"
 #include "sr_ip_handler.h"
 #include "sr_icmp_handler.h"
-#include "sr_arp_handler.h"
 
 /*
  * sr_router must check if it's an IP packet
  * then call this function
  */
 struct sr_if *get_output_interface(struct sr_instance *sr, uint32_t address) {
-	
-	struct sr_if *current_node = sr->if_list;
-	
-	while (current_node) {
-		if (address == current_node->ip) {
-			return current_node;
-		}
-		current_node = current_node->next;
-	}
+  
+  struct sr_if *current_node = sr->if_list;
+  
+  while (current_node) {
+    if (address == current_node->ip) {
+      return current_node;
+    }
+    current_node = current_node->next;
+  }
 
-	return NULL;
+  return NULL;
 }
 
 void ip_handler(struct sr_instance* sr, 
@@ -64,9 +63,9 @@ void ip_handler(struct sr_instance* sr,
   } 
 
   uint8_t *icmp_cargo = (uint8_t *) (ip_hdr + sizeof(sr_ip_hdr_t));
-	unsigned int cargo_len = len - sizeof(sr_ethernet_hdr_t) - sizeof(sr_ip_hdr_t);
+  unsigned int cargo_len = len - sizeof(sr_ethernet_hdr_t) - sizeof(sr_ip_hdr_t);
     
-	if (ip_hdr->ip_sum != cksum(icmp_cargo, cargo_len)) {
+  if (ip_hdr->ip_sum != cksum(icmp_cargo, cargo_len)) {
         fprintf(stderr, "Error: Invalid IP packet\n Checksum does not match\nDropping packet...\n");
         return ;
   }
@@ -75,8 +74,8 @@ void ip_handler(struct sr_instance* sr,
     /* else this IP packet is valid: */
     
     /* Check that the ip packet is being sent to this host, sr_router */
-	struct sr_if *out_interface = get_output_interface(sr, ip_hdr->ip_dst);
-	if (out_interface != NULL) {
+  struct sr_if *out_interface = get_output_interface(sr, ip_hdr->ip_dst);
+  if (out_interface != NULL) {
         printf("This IP packet was sent to me!\n");
         /* check if IP packet uses ICMP */
         if (ip_hdr->ip_p == ip_protocol_icmp) {
@@ -106,7 +105,7 @@ void ip_handler(struct sr_instance* sr,
           struct sr_rt *current_node = sr->routing_table;
           
           while (current_node) {
-            if (current_node->dest.s_addr == ip_hdr->mask.s_addr & ip_hdr->ip_dst) {
+              if (ip_hdr->dst.s_addr == current_node->mask.s_addr & ip_hdr->ip_dst) {
 
                 /* Build the outgoing ethernet frame to forward to another router */
                 sr_ethernet_hdr_t *eth_hdr = (sr_ethernet_hdr_t*) (packet);
@@ -114,7 +113,7 @@ void ip_handler(struct sr_instance* sr,
                 memcpy(eth_hdr->ether_shost, out_interface->addr, ETHER_ADDR_LEN);
 
                 /* search for the new ethernet frame's destination MAC address ARP cache */
-                struct sr_arpentry *current_arp = sr_arpcache_lookup(&sr->cache, current_node->gw.s_addr);
+                struct sr_arpentry *current_arp = sr_arpcache_lookup(sr->cache, current_node->gw.s_addr);
                 
                 /* found a hit in the ARP cache*/
                 if (current_arp) {
@@ -128,18 +127,25 @@ void ip_handler(struct sr_instance* sr,
 
                 } else {
                     /* Cannot find a routing table entry. We try to request */
-                    send_arp_req(sr, sr_arpcache_queuereq(&sr->cache, current_node->gw.s_addr, packet, len, interface));
+                    /* Construct arp_header*/
+
+                    struct sr_arp_hdr_t *arp_hdr = malloc(sizeof(sr_arp_hdr_t));
+                    handle_arp_req(sr, packet, len, interface, sr->if_list, , (sr_ethernet_hdr*)(packet));
                     return ;
                 }
-              }
-            }
 
-            /* go to the next node in the rt_table */
-            current_node = current_node->next;
-          }
+
+              }
+              /* go to the next node in the rt_table */
+              current_node = current_node->next;
+
+          } /*end of while loop*/
+
+            
+      }
         
         return;
-      }
+  } /*end of else for line 78 if block */
 
   return;
-}
+} /* end of ip_handler function */
