@@ -163,26 +163,26 @@ sr_ethernet_hdr_t* gen_eth_frame (sr_ethernet_hdr_t *old_eth_pkt, old_len, uint8
 }
 
 	
-void send_icmp_echo_request(struct sr_instance *sr, struct sr_packet *packet, char *interface) {
+void send_icmp_echo_request(struct sr_instance *sr, struct sr_packet *packet, struct sr_if *interface) {
 	sr_send_packet(sr, gen_icmp_packet(packet, 0), eth_frame_size, interface);
 }
 
 
-void send_icmp_net_unreachable(struct sr_instance *sr, struct sr_packet *packet, char *interface) {
+void send_icmp_net_unreachable(struct sr_instance *sr, struct sr_packet *packet, struct sr_if *interface) {
 	sr_send_packet(sr, gen_icmp_packet(packet, 3, 0), eth_frame_size, interface);
 }
 
 
-void send_icmp_host_unreachable(struct sr_instance *sr, struct sr_packet *packet, char *interface) {
+void send_icmp_host_unreachable(struct sr_instance *sr, struct sr_packet *packet, struct sr_if *interface) {
 	sr_send_packet(sr, gen_icmp_packet(packet, 3, 1), eth_frame_size, interface);
 }
 
 
-void send_icmp_port_unreachable(struct sr_instance *sr, struct sr_packet *packet, char *interface) {
+void send_icmp_port_unreachable(struct sr_instance *sr, struct sr_packet *packet, struct sr_if *interface) {
 	sr_send_packet(sr, gen_icmp_packet(packet, 3, 3), eth_frame_size, interface);
 }
 
 
-void send_icmp_time_exceeded(struct sr_instance *sr, struct sr_packet *packet, char *interface) {
+void send_icmp_time_exceeded(struct sr_instance *sr, struct sr_packet *packet, struct sr_if *interface) {
 	sr_send_packet(sr, gen_icmp_packet(packet, 11), eth_frame_size, interface);
 }

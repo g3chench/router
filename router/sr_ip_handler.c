@@ -32,9 +32,9 @@ struct sr_if *get_output_interface(struct sr_instance *sr, uint32_t address) {
 }
 
 void ip_handler(struct sr_instance* sr, 
-        uint8_t *packet,
+        struct sr_packet* packet,
         unsigned int len, 
-        char *interface) {
+        struct sr_if *interface) {
 
   /*
               Ethernet frame
@@ -48,7 +48,7 @@ void ip_handler(struct sr_instance* sr,
   */
   /* store the ip packet from the ethernet frame */
   sr_ip_hdr_t *ip_hdr = (sr_ip_hdr_t *) (packet + sizeof(sr_ethernet_hdr_t));
-  uint8_t *ip_pkt;
+  
   /* fprintf(stdout, "Received IP %s from %s on %s\n", 
                   ip_hdr->ip==ip_protocol_icmp?"ICMP":"IP", 
                   ip_)
@@ -104,9 +104,9 @@ void ip_handler(struct sr_instance* sr,
           * table entry using LPM.
           */
           struct sr_rt *current_node = sr->routing_table;
-          
+        
           while (current_node) {
-              if (ip_hdr->dst.s_addr == current_node->mask.s_addr & ip_hdr->ip_dst) {
+              if (current_node->dest.s_addr == ip_hdr->ip_dst & current_node->mask.s_addr) {
 
                 /* Build the outgoing ethernet frame to forward to another router */
                 sr_ethernet_hdr_t *eth_hdr = (sr_ethernet_hdr_t*) (packet);
@@ -125,27 +125,24 @@ void ip_handler(struct sr_instance* sr,
                     free(current_arp);
                     sr_send_packet(sr, packet, len, current_node->interface);
                     return;
-
-                } else {
-                    /* Cannot find a routing table entry. We try to request */
-                    /* Construct arp_header*/
-
-                    struct sr_arp_hdr_t *arp_hdr = malloc(sizeof(sr_arp_hdr_t));
-                    handle_arp_request(sr, packet, len, interface, sr->if_list, , (sr_ethernet_hdr*)(packet));
-                    return ;
                 }
-
-
               }
               /* go to the next node in the rt_table */
               current_node = current_node->next;
-
           } /*end of while loop*/
 
-            
+
+          /* Cannot find a routing table entry. add an arp request to the queue*/
+          /* INCOMPLETE */
+          //send_icmp_host_unreachable(sr, packet, interface);
+
+          //struct sr_arpreq *req = sr_arpcache_queuereq(sr->cache, ip, packet, len, interface)
+
+          return ;
+
+      send_icmp_net_unreachable(sr->cache, , packet, interface);   
       }
-        
-        return;
+      return;
   } /*end of else for line 78 if block */
 
   return;
