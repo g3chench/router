@@ -9,6 +9,7 @@
  * with the routing table, as well as the main entry method
  * for routing.
  *
+ * If I die tomorrow, this assignment should be held liable.
  **********************************************************************/
 
 #include <stdio.h>
