@@ -109,7 +109,7 @@ uint8_t* gen_icmp_packet (int type, int code) {
                       		   -----------------------
     */
 
-sr_ethernet_hdr_t* gen_eth_frame (sr_ethernet_hdr_t *old_eth_pkt, old_len, uint8_t *icmp_pkt, int icmp_type) {
+sr_ethernet_hdr_t* gen_eth_frame (uint8_t *icmp_pkt, int icmp_type) {
 
 	/* Create the ethernet header*/
 	sr_ethernet_hdr_t *eth_hdr = sizeof(eth_hdr);

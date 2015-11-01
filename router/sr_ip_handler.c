@@ -34,8 +34,9 @@ struct sr_if *get_output_interface(struct sr_instance *sr, uint32_t address) {
 void ip_handler(struct sr_instance* sr, 
         struct uint_8* packet,
         unsigned int len, 
-        struct sr_if *interface) {
-
+        char *interface) {
+  
+  struct sr_if* in_interface = (struct sr_if*) interface;
   /*
               Ethernet frame
     --------------------------------------------
@@ -76,15 +77,16 @@ void ip_handler(struct sr_instance* sr,
     
     /* Check that the ip packet is being sent to this host, sr_router */
   struct sr_if *out_interface = get_output_interface(sr, ip_hdr->ip_dst);
+
   if (out_interface != NULL) {
         printf("This IP packet was sent to me!\n");
         /* check if IP packet uses ICMP */
         if (ip_hdr->ip_p == ip_protocol_icmp) {
-            send_icmp_echo_request(sr, packet, interface);
+            send_icmp_echo_request(sr, packet, in_interface);
 
         /* check if IP packet uses TCP or UDP */
         } else if (ip_hdr->ip_p == 6 || ip_hdr->ip_p == 14) {
-            send_icmp_port_unreachable(sr, packet, interface);
+            send_icmp_port_unreachable(sr, packet, in_interface);
 
         } else {
             fprintf(stderr, "Error: this IP packet uses an unrecognized protocol.\nDropping packet...\n");
@@ -96,7 +98,7 @@ void ip_handler(struct sr_instance* sr,
       
       if (ip_hdr->ip_ttl <= 1) {
         fprintf(stderr, "Packet's TTL expired");
-        send_icmp_time_exceeded(sr, packet, interface);
+        send_icmp_time_exceeded(sr, packet, in_interface);
         return ;
 
       } else {
@@ -139,7 +141,7 @@ void ip_handler(struct sr_instance* sr,
           } /*end of while loop*/
 
           
-          send_icmp_host_unreachable(sr, packet, interface);   
+          send_icmp_host_unreachable(sr, packet, in_interface);   
       }
       return;
   } /*end of else for line 78 if block */
