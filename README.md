@@ -1,5 +1,9 @@
 # simple-router
 
-Super secret repository for 458 Programming Assignment 1
+### Overview
 
-**DO NOT PUSH BIG CHANGES DIRECTLY TO MASTER - MAKE PULL REQUESTS INSTEAD**
+TODO
+
+### Design Considerations
+
+TODO
