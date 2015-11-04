@@ -99,7 +99,11 @@ void ip_handler(struct sr_instance* sr,
   } else {
       printf("Forward this packet to another router...\n");
       
-      if (ip_hdr->ip_ttl <= 1) {
+      if (ip_hdr->ip_ttl == 1) {
+        fprintf(stderr, "Packet's TTL is 1");
+        send_icmp_echo_request(sr, packet, in_interface);
+
+      } else if (ip_hdr->ip_ttl < 1) {
         fprintf(stderr, "Packet's TTL expired");
         send_icmp_time_exceeded(sr, packet, in_interface);
         return ;
