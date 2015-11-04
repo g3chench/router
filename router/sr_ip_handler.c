@@ -67,13 +67,13 @@ void ip_handler(struct sr_instance* sr,
   uint16_t sum = ip_hdr->ip_sum;
   ip_hdr->ip_sum = 0;
 
-  uint8_t *icmp_cargo = (uint8_t *) (ip_hdr + sizeof(sr_ip_hdr_t));
-  unsigned int cargo_len = len - sizeof(sr_ethernet_hdr_t) - sizeof(sr_ip_hdr_t);
+  // uint8_t *icmp_cargo = (uint8_t *) (ip_hdr + sizeof(sr_ip_hdr_t));
+  // unsigned int cargo_len = len - sizeof(sr_ethernet_hdr_t) - sizeof(sr_ip_hdr_t);
     
-  if (sum != cksum(icmp_cargo, cargo_len)) {
+  if (sum != cksum(ip_hdr, iphdr->ip_hl * 4)) {
       uint16_t actualCkSum = 0;
       uint16_t expectedCkSum = 0;
-      actualCkSum = cksum(icmp_cargo, cargo_len);
+      actualCkSum = cksum(ip_hdr, iphdr->ip_hl * 4);
       expectedCkSum = sum;
       fprintf(stderr,"TESTING: Actual Checksum is %i\n", actualCkSum);
       fprintf(stderr,"TESTING: Expected Checksum is %i\n", expectedCkSum);
