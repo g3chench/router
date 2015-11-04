@@ -91,14 +91,13 @@ void ip_handler(struct sr_instance* sr,
   if (out_interface != NULL) {
         printf("This IP packet was sent to me!\n");
         /* check if IP packet uses ICMP */
-        printf("IP PROTOCOL TYPE: %n\n", ip_hdr->ip_p);
         if (ip_hdr->ip_p == 1) {
           printf("GOT AN ICMP PACKET\n");
-          sr_icmp_hdr_t* icmp_hdr = ip_hdr + sizeof(sr_ip_hdr_t);
+          sr_icmp_hdr_t* icmp_hdr = (sr_icmp_hdr_t *) (packet + sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t));
           
           if (icmp_hdr->icmp_code == 0 && icmp_hdr->icmp_type == 8) {
-              printf("got an ECHO REQUEST\n");
-              send_icmp_echo_reply(sr, packet, in_interface);
+            printf("got an ECHO REQUEST\n");
+            send_icmp_echo_reply(sr, packet, in_interface);
           }
 
         /* check if IP packet uses TCP or UDP */
@@ -145,7 +144,6 @@ void ip_handler(struct sr_instance* sr,
                 printf("TESTING: HERE 0\n");
 
                 struct sr_if* fwd_out_if = sr_get_interface(sr, current_node->interface);
-                printf("----ERMAHGERD OUTWRAD INTERFACE: %n\n", fwd_out_if->addr);
                 memcpy(eth_hdr->ether_shost, fwd_out_if->addr, ETHER_ADDR_LEN);
 
                 printf("TESTING: HERE 1\n");
