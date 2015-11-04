@@ -65,13 +65,14 @@ void ip_handler(struct sr_instance* sr,
 
   uint8_t *icmp_cargo = (uint8_t *) (ip_hdr + sizeof(sr_ip_hdr_t));
   unsigned int cargo_len = len - sizeof(sr_ethernet_hdr_t) - sizeof(sr_ip_hdr_t);
+
+  uint16_t sum = 0;
+  sum = cksum(icmp_cargo, cargo_len);
     
-  if (ip_hdr->ip_sum != cksum(icmp_cargo, cargo_len)) {
-      uint16_t sum = 0;
-      sum = cksum(icmp_cargo, cargo_len);
-        fprintf(stderr, "%i\n", sum);
-        fprintf(stderr, "Error: Invalid IP packet\n Checksum does not match\nDropping packet...\n");
-        return ;
+  if (ip_hdr->ip_sum != sum) {
+      fprintf(stderr, "%i\n", sum);
+      fprintf(stderr, "Error: Invalid IP packet\n Checksum does not match\nDropping packet...\n");
+      return ;
   }
 
 
