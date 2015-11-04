@@ -67,7 +67,8 @@ void ip_handler(struct sr_instance* sr,
   unsigned int cargo_len = len - sizeof(sr_ethernet_hdr_t) - sizeof(sr_ip_hdr_t);
     
   if (ip_hdr->ip_sum != cksum(icmp_cargo, cargo_len)) {
-      uint16_t sum = cksum(icmp_cargo, cargo_len);
+      uint16_t sum = 0;
+      sum = cksum(icmp_cargo, cargo_len);
         fprintf(stderr, "%i\n", sum);
         fprintf(stderr, "Error: Invalid IP packet\n Checksum does not match\nDropping packet...\n");
         return ;
@@ -125,6 +126,7 @@ void ip_handler(struct sr_instance* sr,
                     memcpy(eth_hdr->ether_dhost, current_arp->mac, ETHER_ADDR_LEN);
                     ip_hdr->ip_ttl--;
                    /* remember ip_hl:4 in sr_protocol.h*/
+                    ip_hdr->ip_sum = 0;
                     ip_hdr->ip_sum = cksum(ip_hdr, ip_hdr->ip_hl*4);
                     free(current_arp);
                     sr_send_packet(sr, (uint8_t *)(packet), len, current_node->interface);
