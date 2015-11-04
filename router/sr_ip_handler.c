@@ -82,6 +82,7 @@ void ip_handler(struct sr_instance* sr,
       return ;
   }
 
+  ip_hdr->ip_sum = sum;
 
     /* else this IP packet is valid: */
     
