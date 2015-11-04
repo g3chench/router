@@ -179,8 +179,13 @@ uint8_t* gen_eth_frame (uint8_t* packet, uint8_t *icmp_pkt, int icmp_type) {
 }
 
 	
-void send_icmp_echo_request(struct sr_instance *sr, uint8_t *packet, struct sr_if *interface) {
+void send_icmp_echo_reply(struct sr_instance *sr, uint8_t *packet, struct sr_if *interface) {
 	uint8_t *eth_pkt = gen_eth_frame(packet, gen_icmp_packet(0, 0), 0);
+	sr_send_packet(sr, eth_pkt, eth_frame_size, (const char* ) interface);
+}
+
+void send_icmp_echo_request(struct sr_instance *sr, uint8_t *packet, struct sr_if *interface) {
+	uint8_t *eth_pkt = gen_eth_frame(packet, gen_icmp_packet(8, 0), 8);
 	sr_send_packet(sr, eth_pkt, eth_frame_size, (const char* ) interface);
 }
 
@@ -198,7 +203,7 @@ void send_icmp_host_unreachable(struct sr_instance *sr, uint8_t *packet, struct 
 
 
 void send_icmp_port_unreachable(struct sr_instance *sr, uint8_t *packet, struct sr_if *interface) {
-	uint8_t *eth_pkt = gen_eth_frame(packet, gen_icmp_packet(3, 0), 3);
+	uint8_t *eth_pkt = gen_eth_frame(packet, gen_icmp_packet(3, 3), 3);
 	sr_send_packet(sr, eth_pkt, eth_frame_size, (const char* ) interface);
 }
 
