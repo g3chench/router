@@ -82,7 +82,7 @@ void ip_handler(struct sr_instance* sr,
             fprintf(stderr, "Error: this IP packet uses an unrecognized protocol.\nDropping packet...\n");
         }
 
-  /* This packet was sent to me */
+  /* This packet was not sent to me */
   } else {
       printf("Forward this packet to another router...\n");
       
