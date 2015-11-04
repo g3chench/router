@@ -68,7 +68,7 @@ void ip_handler(struct sr_instance* sr,
   /* Check that the ip packet is being sent to this host, sr_router */
   struct sr_if *out_interface = sr_get_interface(sr, interface);
 
-  if (out_interface != NULL) {
+  if (out_interface != 0) {
         printf("This IP packet was sent to me!\n");
         /* check if IP packet uses ICMP */
         if (ip_hdr->ip_p == ip_protocol_icmp) {
