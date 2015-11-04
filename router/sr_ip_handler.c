@@ -135,9 +135,15 @@ void ip_handler(struct sr_instance* sr,
                 /* Build the outgoing ethernet frame to forward to another router */
                 sr_ethernet_hdr_t *eth_hdr = (sr_ethernet_hdr_t*) (packet);
                 printf("TESTING: HERE 0\n");
+<<<<<<< HEAD
                 printf("TESTING: ether_shost: %s\n", eth_hdr->ether_shost);
                 printf("TESTING: dest_addr: %s\n", out_interface->addr);
                 memcpy(eth_hdr->ether_shost, out_interface->addr, ETHER_ADDR_LEN);
+=======
+                struct sr_if* fwd_out_if = sr_get_interface(sr, current_node->interface);
+                printf("----ERMAHGERD OUTWRAD INTERFACE: %n\n", fwd_out_if->addr);
+                memcpy(eth_hdr->ether_shost, fwd_out_if->addr, ETHER_ADDR_LEN);
+>>>>>>> 03bdeeb93d809748f1770f68e58278210b63773c
                 printf("TESTING: HERE 1\n");
                 /* search for the new ethernet frame's destination MAC address ARP cache */
                 struct sr_arpentry *current_arp = sr_arpcache_lookup(&sr->cache, current_node->gw.s_addr);
