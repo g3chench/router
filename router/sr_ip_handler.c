@@ -113,21 +113,29 @@ void ip_handler(struct sr_instance* sr,
           * search through linked list of nodes for forwarding
           * table entry using LPM.
           */
-
+          printf("Forward this packet to another router...\n");
           struct sr_rt *current_node = sr->routing_table;
 
           while (current_node) {
+              printf("TESTING: In current node..\nTESTING: Before checking ip dst\n");
+
+              printf("TESTING: ip_dst is %i\n", ip_hdr->ip_dst);
+              printf("TESTING: current_node dst is %i\n", current_node->dest.s_addr & current_node->mask.s_addr);
+
               if (ip_hdr->ip_dst == (current_node->dest.s_addr & current_node->mask.s_addr)) {
+                printf("TESTING: ip_dst matched with current node's dest..\n");
 
                 /* Build the outgoing ethernet frame to forward to another router */
                 sr_ethernet_hdr_t *eth_hdr = (sr_ethernet_hdr_t*) (packet);
+                printf("TESTING: HERE 0\n");
                 memcpy(eth_hdr->ether_shost, out_interface->addr, ETHER_ADDR_LEN);
-
+                printf("TESTING: HERE 1\n");
                 /* search for the new ethernet frame's destination MAC address ARP cache */
                 struct sr_arpentry *current_arp = sr_arpcache_lookup(&sr->cache, current_node->gw.s_addr);
-                
+                printf("TESTING: HERE 2\n");
                 /* found a hit in the ARP cache*/
                 if (current_arp) {
+                    printf("TESTING: Current Arp..\n");
                     memcpy(eth_hdr->ether_dhost, current_arp->mac, ETHER_ADDR_LEN);
                     ip_hdr->ip_ttl--;
                    /* remember ip_hl:4 in sr_protocol.h*/
@@ -139,12 +147,14 @@ void ip_handler(struct sr_instance* sr,
 
                 /* No entry found in ARP cache, send ARP request */
                 } else {
+                    printf("TESTING: No entry found in ARP Cache\n");
                     struct sr_arpreq *req = sr_arpcache_queuereq(&sr->cache, current_node->gw.s_addr, (uint8_t*)packet, len, (char*)interface);
                     handle_arpreq(sr, req);
                     /*ip_hdr->ip_ttl--; DO  I NEED THIS LINE??*/
                     return ;
                 }
               }
+              printf("TESTING: After checking ip_dst\n");
               /* go to the next node in the rt_table */
               current_node = current_node->next;
           } /*end of while loop*/
