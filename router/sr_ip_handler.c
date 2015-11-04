@@ -49,7 +49,6 @@ void ip_handler(struct sr_instance* sr,
   */
   /* store the ip packet from the ethernet frame */
   sr_ip_hdr_t *ip_hdr = (sr_ip_hdr_t *) (packet + sizeof(sr_ethernet_hdr_t));
-  
   /* fprintf(stdout, "Received IP %s from %s on %s\n", 
                   ip_hdr->ip==ip_protocol_icmp?"ICMP":"IP", 
                   ip_)
@@ -68,6 +67,8 @@ void ip_handler(struct sr_instance* sr,
   unsigned int cargo_len = len - sizeof(sr_ethernet_hdr_t) - sizeof(sr_ip_hdr_t);
     
   if (ip_hdr->ip_sum != cksum(icmp_cargo, cargo_len)) {
+      uint16_t sum = cksum(icmp_cargo, cargo_len);
+        fprintf(stderr, "%i\n", sum);
         fprintf(stderr, "Error: Invalid IP packet\n Checksum does not match\nDropping packet...\n");
         return ;
   }
@@ -102,7 +103,8 @@ void ip_handler(struct sr_instance* sr,
         return ;
 
       } else {
-          /* search through linked list of nodes for forwarding
+          /* forward the packet if new TTL > 0
+          * search through linked list of nodes for forwarding
           * table entry using LPM.
           */
 
@@ -122,7 +124,7 @@ void ip_handler(struct sr_instance* sr,
                 if (current_arp) {
                     memcpy(eth_hdr->ether_dhost, current_arp->mac, ETHER_ADDR_LEN);
                     ip_hdr->ip_ttl--;
-                    /* remember ip_hl:4 in sr_protocol.h*/
+                   /* remember ip_hl:4 in sr_protocol.h*/
                     ip_hdr->ip_sum = cksum(ip_hdr, ip_hdr->ip_hl*4);
                     free(current_arp);
                     sr_send_packet(sr, (uint8_t *)(packet), len, current_node->interface);

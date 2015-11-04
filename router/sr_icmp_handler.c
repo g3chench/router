@@ -13,8 +13,10 @@
 
 
 size_t eth_frame_size = sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_hdr_t) + ICMP_DATA_SIZE;
-
-
+/*
+const uint8_t MIN_ETH_SIZE = 64*sizeof(uint8_t);
+const uint8_t MAX_ETH_SIZE = 1500*sizeof(uint8_t);
+*/
 /*
 * Return a newly constructed ICMP packet struct given the type, code 
   and length of data the packet holds and the pointer to that data 
@@ -53,6 +55,7 @@ uint8_t* gen_icmp_packet (int type, int code) {
 			sr_icmp_hdr_t *icmp_hdr = malloc(sizeof(sr_icmp_hdr_t));
 			icmp_hdr->icmp_type = 11;
 		    icmp_hdr->icmp_code = 0;
+		    icmp_hdr->icmp_sum = 0;
 			icmp_hdr->icmp_sum = cksum(icmp_hdr + sizeof(sr_icmp_hdr_t), ICMP_DATA_SIZE);
 			icmp_pkt = (uint8_t *)icmp_hdr;
 			break;
@@ -61,6 +64,7 @@ uint8_t* gen_icmp_packet (int type, int code) {
 			/* ICMP type 3: X unreachable*/
 			sr_icmp_t3_hdr_t *icmp_hdr = malloc(sizeof(sr_icmp_t3_hdr_t));
 			icmp_hdr->icmp_type = 3;
+			icmp_hdr->icmp_sum = 0;
 			icmp_hdr->icmp_sum = cksum(icmp_hdr + sizeof(icmp_hdr), ICMP_DATA_SIZE);
 			icmp_pkt = (uint8_t *)icmp_hdr;
 
@@ -131,13 +135,20 @@ uint8_t* gen_eth_frame (uint8_t* packet, uint8_t *icmp_pkt, int icmp_type) {
 	ip_hdr->ip_len = (size_t)(sizeof(sr_ip_hdr_t));
 	ip_hdr->ip_id = 0;
 	ip_hdr->ip_off = htons(IP_DF);
-	ip_hdr->ip_ttl = 0;
+	ip_hdr->ip_ttl = INIT_TTL;
 	ip_hdr->ip_p = ip_protocol_icmp;
 
 	if (icmp_type != 3) {
+		ip_hdr->ip_sum = 0;
 		ip_hdr->ip_sum = cksum(ip_hdr + sizeof(sr_ip_hdr_t), sizeof(sr_icmp_hdr_t) + ICMP_DATA_SIZE);
+/*		fprintf(stdout, "ICMP header \n");
+		print_hdrs(icmp_pkt, sizeof(sr_icmp_t3_hdr_t));
+*/
 	} else {
 		ip_hdr->ip_sum = cksum(ip_hdr + sizeof(sr_ip_hdr_t), sizeof(sr_icmp_t3_hdr_t) + ICMP_DATA_SIZE);
+/*		fprintf(stdout, "ICMP header \n");
+		print_hdrs(icmp_pkt, sizeof(sr_icmp_hdr_t));
+*/
 	}
 	
 	sr_ip_hdr_t *old_ip_hdr = (sr_ip_hdr_t *)(old_eth_hdr + sizeof(sr_ethernet_hdr_t));
@@ -153,6 +164,14 @@ uint8_t* gen_eth_frame (uint8_t* packet, uint8_t *icmp_pkt, int icmp_type) {
 	memcpy(new_eth_pkt, eth_hdr, sizeof(sr_ethernet_hdr_t));
 	memcpy(eth_cargo, ip_hdr, sizeof(sr_ip_hdr_t));
 	memcpy(ip_cargo, icmp_pkt, sizeof(sr_icmp_hdr_t) + ICMP_DATA_SIZE);
+/*
+	fprintf(stdout, "Ethernet header\n");
+	print_hdr_eth(new_eth_pkt);
+	fprintf(stdout, "IP header\n");
+	print_hdr_ip(eth_cargo);
+	fprintf(stdout, "ICMP header\n");
+	print_hdr_icmp(ip_cargo);
+*/	
 
 	return (uint8_t*) new_eth_pkt;
 }
