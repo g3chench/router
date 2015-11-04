@@ -63,30 +63,22 @@ void ip_handler(struct sr_instance* sr,
       return ;
   } 
 
-
-  uint16_t sum = ip_hdr->ip_sum;
+  uint16_t expectedSum = ip_hdr->ip_sum;
   ip_hdr->ip_sum = 0;
-
-  /* uint8_t *icmp_cargo = (uint8_t *) (ip_hdr + sizeof(sr_ip_hdr_t));
-   unsigned int cargo_len = len - sizeof(sr_ethernet_hdr_t) - sizeof(sr_ip_hdr_t);
-  */  
-  if (sum != cksum(ip_hdr, ip_hdr->ip_hl * 4)) {
-      uint16_t actualCkSum = 0;
-      uint16_t expectedCkSum = 0;
-      actualCkSum = cksum(ip_hdr, ip_hdr->ip_hl * 4);
-      expectedCkSum = sum;
-      fprintf(stderr,"TESTING: Actual Checksum is %i\n", actualCkSum);
-      fprintf(stderr,"TESTING: Expected Checksum is %i\n", expectedCkSum);
-      /*fprintf(stderr, "%i\n", sum);*/
+  uint16_t actualSum = cksum(ip_hdr, ip_hdr->ip_hl * 4)
+ 
+  if (expectedSum != actualSum) {
+      fprintf(stderr,"TESTING: Expected Checksum is %i\n", expectedSum);
+      fprintf(stderr,"TESTING: Actual Checksum is %i\n", actualSum);
       fprintf(stderr, "Error: Invalid IP packet\n Checksum does not match\nDropping packet...\n");
       return ;
   }
 
-  ip_hdr->ip_sum = sum;
+  ip_hdr->ip_sum = expectedSum;
 
-    /* else this IP packet is valid: */
+  /* else this IP packet is valid: */
     
-    /* Check that the ip packet is being sent to this host, sr_router */
+  /* Check that the ip packet is being sent to this host, sr_router */
   struct sr_if *out_interface = get_output_interface(sr, ip_hdr->ip_dst);
 
   if (out_interface != NULL) {
