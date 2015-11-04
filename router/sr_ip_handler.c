@@ -18,16 +18,22 @@
  * then call this function
  */
 struct sr_if *get_output_interface(struct sr_instance *sr, uint32_t address) {
+
+  printf("TESTING: BEFORE current_node\n");
   
   struct sr_if *current_node = sr->if_list;
+
+  printf("TESTING: AFTER current_node\n");
   
   while (current_node) {
     if (address == current_node->ip) {
+      printf("TESTING: FIRST return\n");
       return current_node;
     }
     current_node = current_node->next;
   }
 
+  printf("TESTING: SECOND return\n");
   return NULL;
 }
 
