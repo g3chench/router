@@ -65,7 +65,7 @@ void ip_handler(struct sr_instance* sr,
 
   uint16_t expectedSum = ip_hdr->ip_sum;
   ip_hdr->ip_sum = 0;
-  uint16_t actualSum = cksum(ip_hdr, ip_hdr->ip_hl * 4)
+  uint16_t actualSum = cksum(ip_hdr, ip_hdr->ip_hl * 4);
  
   if (expectedSum != actualSum) {
       fprintf(stderr,"TESTING: Expected Checksum is %i\n", expectedSum);
