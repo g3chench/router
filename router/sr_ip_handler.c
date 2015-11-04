@@ -90,12 +90,20 @@ void ip_handler(struct sr_instance* sr,
 
   if (out_interface != NULL) {
         printf("This IP packet was sent to me!\n");
-        /* check if IP packet uses ICMP */
-        if (ip_hdr->ip_p == ip_protocol_icmp) {
-            send_icmp_echo_request(sr, packet, in_interface);
+        /* check if IP packet uses ICMP *//
+        printf("IP PROTOCOL TYPE: %n\n", ip_hdr->ip_p);
+        if (ip_hdr->ip_p == 1) {
+          printf("GOT AN ICMP PACKET\n");
+          sr_icmp_hdr_t* icmp_hdr = ip_hdr + sizeof(sr_ip_hdr_t);
+          
+          if (icmp_hdr->icmp_code == 0 && icmp_hdr->icmp_type == 8) {
+              printf("got an ECHO REQUEST\n");
+              send_icmp_echo_reply(sr, packet, in_interface);
+          }
 
         /* check if IP packet uses TCP or UDP */
-        } else if (ip_hdr->ip_p == 6 || ip_hdr->ip_p == 14) {
+        } else if (ip_hdr->ip_p == 6 || ip_hdr->ip_p == 17) {
+            printf("GOT A TCP/UDP PACKET\n");
             send_icmp_port_unreachable(sr, packet, in_interface);
 
         } else {

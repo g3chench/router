@@ -51,6 +51,16 @@ uint8_t* gen_icmp_packet (int type, int code) {
 			icmp_pkt = (uint8_t *)icmp_hdr;
 			break;
 		}
+		case 8: {
+			/* ICMP type: echo request*/
+			sr_icmp_hdr_t *icmp_hdr = malloc(sizeof(sr_icmp_hdr_t));
+			icmp_hdr->icmp_type = 8;
+		    icmp_hdr->icmp_code = 0;
+		    icmp_hdr->icmp_sum = 0;
+			icmp_hdr->icmp_sum = cksum(icmp_hdr + sizeof(sr_icmp_hdr_t), ICMP_DATA_SIZE);
+			icmp_pkt = (uint8_t *)icmp_hdr;
+			break;
+		}
 		case 11: {
 			/* ICMP type: time exceeded*/
 			sr_icmp_hdr_t *icmp_hdr = malloc(sizeof(sr_icmp_hdr_t));
