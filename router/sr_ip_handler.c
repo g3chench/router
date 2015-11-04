@@ -74,7 +74,7 @@ void ip_handler(struct sr_instance* sr,
       uint16_t actualCkSum = 0;
       uint16_t expectedCkSum = 0;
       actualCkSum = cksum(icmp_cargo, cargo_len);
-      expectedCkSum = ip_hdr->ip_sum;
+      expectedCkSum = sum;
       fprintf(stderr,"TESTING: Actual Checksum is %i\n", actualCkSum);
       fprintf(stderr,"TESTING: Expected Checksum is %i\n", expectedCkSum);
       /*fprintf(stderr, "%i\n", sum);*/
