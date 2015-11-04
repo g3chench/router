@@ -13,6 +13,26 @@
 #include "sr_icmp_handler.h"
 #include "sr_arp_handler.h"
 
+struct sr_if *get_output_interface(struct sr_instance *sr, uint32_t address) {
+
+  printf("TESTING: BEFORE current_node\n");
+  
+  struct sr_if *current_node = sr->if_list;
+
+  printf("TESTING: AFTER current_node\n");
+  
+  while (current_node) {
+    if (address == current_node->ip) {
+      printf("TESTING: FIRST return\n");
+      return current_node;
+    }
+    current_node = current_node->next;
+  }
+
+  printf("TESTING: SECOND return\n");
+  return NULL;
+}
+
 /*
  * sr_router must check if it's an IP packet
  * then call this function
@@ -66,9 +86,9 @@ void ip_handler(struct sr_instance* sr,
   /* else this IP packet is valid: */
     
   /* Check that the ip packet is being sent to this host, sr_router */
-  struct sr_if *out_interface = sr_get_interface(sr, interface);
+  struct sr_if *out_interface = get_output_interface(sr, ip_hdr->ip_dst);
 
-  if (out_interface != 0) {
+  if (out_interface != NULL) {
         printf("This IP packet was sent to me!\n");
         /* check if IP packet uses ICMP */
         if (ip_hdr->ip_p == ip_protocol_icmp) {
