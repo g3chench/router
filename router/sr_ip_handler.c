@@ -35,7 +35,7 @@ void ip_handler(struct sr_instance* sr,
         uint8_t* packet,
         unsigned int len, 
         char *interface) {
-  
+  printf("TESTING: In ip_handler function..\n");
   struct sr_if* in_interface = (struct sr_if*) interface;
   /*
               Ethernet frame
@@ -65,12 +65,15 @@ void ip_handler(struct sr_instance* sr,
 
   uint8_t *icmp_cargo = (uint8_t *) (ip_hdr + sizeof(sr_ip_hdr_t));
   unsigned int cargo_len = len - sizeof(sr_ethernet_hdr_t) - sizeof(sr_ip_hdr_t);
-
-  uint16_t sum = 0;
-  sum = cksum(icmp_cargo, cargo_len);
     
-  if (ip_hdr->ip_sum != sum) {
-      fprintf(stderr, "%i\n", sum);
+  if (ip_hdr->ip_sum != cksum(icmp_cargo, cargo_len)) {
+      uint16_t actualCkSum = 0;
+      uint16_t expectedCkSum = 0;
+      actualCkSum = cksum(icmp_cargo, cargo_len);
+      expectedCkSum = ip_hdr->ip_sum;
+      fprintf(stderr,"TESTING: Actual Checksum is %i\n", actualCkSum);
+      fprintf(stderr,"TESTING: Expected Checksum is %i\n", expectedCkSum);
+      /*fprintf(stderr, "%i\n", sum);*/
       fprintf(stderr, "Error: Invalid IP packet\n Checksum does not match\nDropping packet...\n");
       return ;
   }

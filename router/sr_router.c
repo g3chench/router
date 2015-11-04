@@ -85,7 +85,7 @@ void sr_handlepacket(struct sr_instance* sr,
     /* fill in code here */
     /* Get the minimum size of Ethernet Header */
     unsigned int minLen = sizeof(sr_ethernet_hdr_t);
-
+    printf("*** -> Provided packet of min length %d\n",minLen);
     /* If the packet size is smaller than the
      minimum Ethernet Header size, output error */
     if (minLen > len){
@@ -99,12 +99,16 @@ void sr_handlepacket(struct sr_instance* sr,
     switch(frame){
         /* If it's an ARP Packet */
         case ethertype_arp:
+            printf("TESTING: Type: ARP Packet\n");
             arp_handler(sr, packet, len, interface, minLen, frame);
+            printf("TESTING: Out of arp_handler\n");
             break;
 
         /* If it's an IP Packet */
         case ethertype_ip:
+            printf("TESTING: Type:  IP Packet\n");
             ip_handler(sr, packet, len, interface);
+            printf("TESTING: out of ip_handler\n");
             break;
 
         /* If it's neither ARP nor IP Packet */
