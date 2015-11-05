@@ -188,7 +188,7 @@ void ip_handler(struct sr_instance* sr,
           }
         
 
-          send_icmp_host_unreachable(sr, packet, in_interface);   
+          send_icmp_net_unreachable(sr, packet, in_interface);   
       }
       return;
   }
