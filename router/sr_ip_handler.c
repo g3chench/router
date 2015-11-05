@@ -130,32 +130,44 @@ void ip_handler(struct sr_instance* sr,
           printf("Forward this packet to another router...\n");
           struct sr_rt *current_node = sr->routing_table;
 
+          /* search through routing table and find entry(current_node) with the longest prefix match
+          * against the destination IP address we want to get to. 
+          */
+          printf("BEGIN LPM SEARCH ==============================================================\n");
           while (current_node) {
-              printf("TESTING: In current node..\nTESTING: Before checking ip dst\n");
+             /* printf("TESTING: In current node..\nTESTING: Before checking ip dst\n");
+              printf("TESTING: ip_dst is %i\n", ip_hdr->ip_dst);*/
+              printf("ITERATION: CURRENT node-------------------------------\n");
+              printf("ip and node mask       : %i\n", (ip_hdr->ip_dst & current_node->mask.s_addr));
+              printf("dest addr and node_mask: %i\n", (current_node->dest.s_addr & current_node->mask.s_addr));
 
-              printf("TESTING: ip_dst is %i\n", ip_hdr->ip_dst);
-              printf("TESTING: current_node dst is %i\n", current_node->dest.s_addr & current_node->mask.s_addr);
-
-              if (ip_hdr->ip_dst == (current_node->dest.s_addr & current_node->mask.s_addr)) {
-                printf("TESTING: ip_dst matched with current node's dest..\n");
+              /* perform LPM */
+              if ((ip_hdr->ip_dst & current_node->mask.s_addr) == (current_node->dest.s_addr & current_node->mask.s_addr)) {
+                printf("Now we found a POSSIBLE LPM match...\n");
 
                 /* Build the outgoing ethernet frame to forward to another router */
                 sr_ethernet_hdr_t *eth_hdr = (sr_ethernet_hdr_t*) (packet);
-                printf("TESTING: HERE 0\n");
+                /* printf("TESTING: HERE 0\n");*/
 
                 struct sr_if* fwd_out_if = sr_get_interface(sr, current_node->interface);
                 memcpy(eth_hdr->ether_shost, fwd_out_if->addr, ETHER_ADDR_LEN);
 
-                printf("TESTING: HERE 1\n");
-                /* search for the new ethernet frame's destination MAC address ARP cache */
-                struct sr_arpentry *current_arp = sr_arpcache_lookup(&sr->cache, current_node->gw.s_addr);
-                printf("TESTING: HERE 2\n");
+                /*printf("TESTING: HERE 1\n");*/
+                /* search for the next hop MAC address in the cache */
+                struct sr_arpentry *current_arp = sr_arpcache_lookup(&(sr->cache), ip_hdr->ip_dst);
+                printf("Check if this mac address exists =========================\n");
+                printf("current_arp->ip: %i\n", current_arp->ip);
+
+/*                printf("TESTING: HERE 2\n");*/
                 /* found a hit in the ARP cache*/
                 if (current_arp) {
-                    printf("TESTING: Current Arp..\n");
+                    printf("FOUND AN ARPCACHE HIT!\n");
+                    /*printf("TESTING: Current Arp..\n");*/
                     memcpy(eth_hdr->ether_dhost, current_arp->mac, ETHER_ADDR_LEN);
+                    memcpy(eth_hdr->ether_shost, fwd_out_if->addr, ETHER_ADDR_LEN);
+                   
+                    /* NOTE!: FIGURE THIS OUT LATER FIONA: remember ip_hl:4 in sr_protocol.h*/ 
                     ip_hdr->ip_ttl--;
-                   /* remember ip_hl:4 in sr_protocol.h*/
                     ip_hdr->ip_sum = 0;
                     ip_hdr->ip_sum = cksum(ip_hdr, ip_hdr->ip_hl*4);
                     free(current_arp);
@@ -176,7 +188,7 @@ void ip_handler(struct sr_instance* sr,
               current_node = current_node->next;
           } /*end of while loop*/
 
-          
+
           send_icmp_host_unreachable(sr, packet, in_interface);   
       }
       return;
