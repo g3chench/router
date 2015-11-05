@@ -89,25 +89,25 @@ void ip_handler(struct sr_instance* sr,
   struct sr_if *out_interface = get_output_interface(sr, ip_hdr->ip_dst);
 
   if (out_interface != NULL) {
-        printf("This IP packet was sent to me!\n");
-        /* check if IP packet uses ICMP */
-        if (ip_hdr->ip_p == 1) {
-          printf("GOT AN ICMP PACKET\n");
-          sr_icmp_hdr_t* icmp_hdr = (sr_icmp_hdr_t *) (packet + sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t));
-          
-          if (icmp_hdr->icmp_code == 0 && icmp_hdr->icmp_type == 8) {
-            printf("got an ECHO REQUEST\n");
-            send_icmp_echo_reply(sr, packet, in_interface);
-          }
-
-        /* check if IP packet uses TCP or UDP */
-        } else if (ip_hdr->ip_p == 6 || ip_hdr->ip_p == 17) {
-            printf("GOT A TCP/UDP PACKET\n");
-            send_icmp_port_unreachable(sr, packet, in_interface);
-
-        } else {
-            fprintf(stderr, "Error: this IP packet uses an unrecognized protocol.\nDropping packet...\n");
+      printf("This IP packet was sent to me!\n");
+      /* check if IP packet uses ICMP */
+      if (ip_hdr->ip_p == 1) {
+        printf("GOT AN ICMP PACKET\n");
+        sr_icmp_hdr_t* icmp_hdr = (sr_icmp_hdr_t *) (packet + sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t));
+        
+        if (icmp_hdr->icmp_code == 0 && icmp_hdr->icmp_type == 8) {
+          printf("got an ECHO REQUEST\n");
+          send_icmp_echo_reply(sr, packet, in_interface);
         }
+
+      /* check if IP packet uses TCP or UDP */
+      } else if (ip_hdr->ip_p == 6 || ip_hdr->ip_p == 17) {
+          printf("GOT A TCP/UDP PACKET\n");
+          send_icmp_port_unreachable(sr, packet, in_interface);
+
+      } else {
+          fprintf(stderr, "Error: this IP packet uses an unrecognized protocol.\nDropping packet...\n");
+      }
 
   /* This packet was not sent to me */
   } else {
@@ -188,11 +188,10 @@ void ip_handler(struct sr_instance* sr,
               current_node = current_node->next;
           } /*end of while loop*/
 
-
           send_icmp_host_unreachable(sr, packet, in_interface);   
       }
       return;
-  } /*end of else for line 84 if block */
+  }
 
   return;
 } /* end of ip_handler function */
