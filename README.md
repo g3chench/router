@@ -31,4 +31,3 @@ This router routes Ethernet packets between a host and clients with a static rou
 
 ### Design Considerations
 
-TODO
