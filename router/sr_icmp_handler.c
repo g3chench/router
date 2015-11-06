@@ -130,7 +130,7 @@ uint8_t* gen_icmp_packet (int type, int code) {
     */
 
 uint8_t* gen_eth_frame (uint8_t* packet, uint8_t *icmp_pkt, int icmp_type, int icmp_code, struct sr_if* interface) {
-
+	printf("in gen_eth_frame\n------------------\n");
 	/* Create the ethernet header*/
 	sr_ethernet_hdr_t *eth_hdr = malloc(sizeof(eth_hdr));
 
@@ -151,6 +151,10 @@ uint8_t* gen_eth_frame (uint8_t* packet, uint8_t *icmp_pkt, int icmp_type, int i
 	ip_hdr->ip_p = ip_protocol_icmp;	
 
 	/* Set the source and destination IP's depending on the ICMP code and type*/
+	printf("Lookingn at icmp_type  and code \n");
+	printf('icmp_type: %n\n', icmp_type);
+	printf('icmp_code: %n\n', icmp_code);
+	
 	if (icmp_type == 0 && icmp_code == 0) {
 		if (icmp_code == 0) { 						/* ICMP ECHO REPLY*/
 			uint32_t dst = ip_hdr->ip_dst;			/* swap the src and dst ip's*/
@@ -159,9 +163,9 @@ uint8_t* gen_eth_frame (uint8_t* packet, uint8_t *icmp_pkt, int icmp_type, int i
 		}
 	}
 	else if (icmp_type == 3) {						/* ICMP PORT UNREACHABLE*/
-		if (icmp_code == 3) {						/* ICMP NET/HOST UNREACHABLE*/
+		if (icmp_code == 3) {
 			ip_hdr->ip_src = interface->ip;	
-		} else {
+		} else {									/* ICMP NET/HOST UNREACHABLE*/
 			ip_hdr->ip_src = ip_hdr->ip_dst;
 		}
 		ip_hdr->ip_dst = ip_hdr->ip_src;
@@ -170,6 +174,7 @@ uint8_t* gen_eth_frame (uint8_t* packet, uint8_t *icmp_pkt, int icmp_type, int i
 		ip_hdr->ip_dst = ip_hdr->ip_src;
 	}
 	
+	printf("compute ICMP checksum\n");
 	/* compute the expected ICMP packet's checksum*/
 	ip_hdr->ip_sum = 0;
 	if (icmp_type != 3) {
@@ -226,7 +231,7 @@ void send_icmp_net_unreachable(struct sr_instance *sr, uint8_t *packet, struct s
 
 
 void send_icmp_host_unreachable(struct sr_instance *sr, uint8_t *packet, struct sr_if *interface) {
-	uint8_t *eth_pkt = gen_eth_frame(packet, gen_icmp_packet(3, 1), 3, 0, interface);
+	uint8_t *eth_pkt = gen_eth_frame(packet, gen_icmp_packet(3, 1), 3, 1, interface);
 	sr_send_packet(sr, eth_pkt, eth_frame_size, (const char* ) interface);
 	free(eth_pkt);
 }

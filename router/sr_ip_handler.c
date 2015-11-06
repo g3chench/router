@@ -70,6 +70,7 @@ void ip_handler(struct sr_instance* sr,
       return ;
   } 
 
+  /* calculate the checksum*/
   uint16_t expectedSum = ip_hdr->ip_sum;
   ip_hdr->ip_sum = 0;
   uint16_t actualSum = 0;
@@ -82,12 +83,12 @@ void ip_handler(struct sr_instance* sr,
       return ;
   }
 
-  ip_hdr->ip_sum = expectedSum;
 
   /* else this IP packet is valid: */
   /* Check that the ip packet is being sent to this host, sr_router */
   struct sr_if *out_interface = get_output_interface(sr, ip_hdr->ip_dst);
 
+  /* PACKET SENT TO ME */
   if (out_interface != NULL) {
       printf("This IP packet was sent to me!\n");
       /* check if IP packet uses ICMP */
@@ -109,15 +110,16 @@ void ip_handler(struct sr_instance* sr,
           fprintf(stderr, "Error: this IP packet uses an unrecognized protocol.\nDropping packet...\n");
       }
 
-  /* This packet was not sent to me */
+  /* PACKET NOT SENT TO ME*/
   } else {
       printf("Forward this packet to another router...\n");
       
-      if (ip_hdr->ip_ttl == 1) {
+
+      if (ip_hdr->ip_ttl == 1) {                        /* TTL = 0 send ICMP echo request */
         fprintf(stderr, "Packet's TTL is 1");
         send_icmp_echo_request(sr, packet, in_interface);
 
-      } else if (ip_hdr->ip_ttl < 1) {
+      } else if (ip_hdr->ip_ttl < 1) {                  /* TTL = 0, expired packet*/
         fprintf(stderr, "Packet's TTL expired");
         send_icmp_time_exceeded(sr, packet, in_interface);
         return ;
@@ -133,16 +135,19 @@ void ip_handler(struct sr_instance* sr,
           printf("BEGIN LPM SEARCH ==============================================================\n");
 
           struct sr_rt* matching_entry = NULL;
-          while (current_node) {
+          unsigned long matching_len = 0;
 
+          while (current_node) {
               printf("ITERATION: CURRENT node-------------------------------\n");
               printf("ip and node mask       : %i\n", (ip_hdr->ip_dst & current_node->mask.s_addr));
               printf("dest addr and node_mask: %i\n", (current_node->dest.s_addr & current_node->mask.s_addr));
-              
+              printf("matching_len: %lu\n", matching_len);
                /* perform LPM */
-              if ((ip_hdr->ip_dst & current_node->mask.s_addr) == (current_node->dest.s_addr & current_node->mask.s_addr)) {
+              if (((ip_hdr->ip_dst & current_node->mask.s_addr) == (current_node->dest.s_addr & current_node->mask.s_addr))
+                        & (matching_len <= current_node->mask.s_addr)) {
                 printf("We found a LPM match...\n");
                 matching_entry = current_node;
+                matching_len = current_node->mask.s_addr;
                 break;
               }
 
@@ -153,11 +158,13 @@ void ip_handler(struct sr_instance* sr,
           printf("Now out of the loop..-------------------\n");
          
           if (!matching_entry) {
+              printf("There is no matching entry in the forwarding table\n");
               /* No possible route to our destination, send ICMP Net unreachable message*/
               send_icmp_net_unreachable(sr, packet, in_interface);
               return;
           }
 
+          printf("THERE'S A MATCHING DAMN ENTRY IN THE FORWARDING TABLE\n");
           /* Build the outgoing ethernet frame to forward to another router */
           sr_ethernet_hdr_t *eth_hdr = (sr_ethernet_hdr_t*) (packet);
           
