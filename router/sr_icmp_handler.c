@@ -35,7 +35,7 @@ You may want to create additional structs for ICMP messages for
 /*
  * Return an ICMP packet header given its type and code. 
  */
-uint8_t* gen_icmp_packet (int type, int code) {
+uint8_t* gen_icmp_packet (uint8_t type, uint8_t code) {
 
 	printf("in gen icmp_pkt function===================================================");
 
