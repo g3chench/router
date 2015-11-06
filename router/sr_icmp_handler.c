@@ -173,12 +173,12 @@ uint8_t* gen_eth_frame (uint8_t* packet, uint8_t *icmp_pkt, int icmp_type, int i
 	/* compute the expected ICMP packet's checksum*/
 	ip_hdr->ip_sum = 0;
 	if (icmp_type != 3) {
-		ip_hdr->ip_sum = cksum(ip_hdr + sizeof(sr_icmp_hdr_t), ip_hdr->ip_len);
+		ip_hdr->ip_sum = cksum(ip_hdr + sizeof(sr_ip_hdr_t), ip_hdr->ip_len);
 /*		fprintf(stdout, "ICMP header \n");
 		print_hdrs(icmp_pkt, sizeof(sr_icmp_t3_hdr_t));
 */
 	} else {
-		ip_hdr->ip_sum = cksum(ip_hdr + sizeof(sr_icmp_t3_hdr_t), ip_hdr->ip_len);
+		ip_hdr->ip_sum = cksum(ip_hdr + sizeof(sr_ip_hdr_t), ip_hdr->ip_len);
 /*		fprintf(stdout, "ICMP header \n");
 		print_hdrs(icmp_pkt, sizeof(sr_icmp_hdr_t));
 */
@@ -207,40 +207,40 @@ uint8_t* gen_eth_frame (uint8_t* packet, uint8_t *icmp_pkt, int icmp_type, int i
 	
 void send_icmp_echo_reply(struct sr_instance *sr, uint8_t *packet, struct sr_if *interface) {
 	uint8_t *eth_pkt = gen_eth_frame(packet, gen_icmp_packet(0, 0), 0, 0, interface);
-	int result = sr_send_packet(sr, eth_pkt, eth_frame_size, (const char* ) interface);
+	sr_send_packet(sr, eth_pkt, eth_frame_size, (const char* ) interface);
 	free(eth_pkt);
 }
 
 void send_icmp_echo_request(struct sr_instance *sr, uint8_t *packet, struct sr_if *interface) {
 	uint8_t *eth_pkt = gen_eth_frame(packet, gen_icmp_packet(8, 0), 8, 0, interface);
-	int result = sr_send_packet(sr, eth_pkt, eth_frame_size, (const char* ) interface);
+	sr_send_packet(sr, eth_pkt, eth_frame_size, (const char* ) interface);
 	free(eth_pkt);
 }
 
 
 void send_icmp_net_unreachable(struct sr_instance *sr, uint8_t *packet, struct sr_if *interface) {
 	uint8_t *eth_pkt = gen_eth_frame(packet, gen_icmp_packet(3, 0), 3, 0, interface);
-	int result = sr_send_packet(sr, eth_pkt, eth_frame_size, (const char* ) interface);
+	sr_send_packet(sr, eth_pkt, eth_frame_size, (const char* ) interface);
 	free(eth_pkt);
 }
 
 
 void send_icmp_host_unreachable(struct sr_instance *sr, uint8_t *packet, struct sr_if *interface) {
 	uint8_t *eth_pkt = gen_eth_frame(packet, gen_icmp_packet(3, 1), 3, 0, interface);
-	int result = sr_send_packet(sr, eth_pkt, eth_frame_size, (const char* ) interface);
+	sr_send_packet(sr, eth_pkt, eth_frame_size, (const char* ) interface);
 	free(eth_pkt);
 }
 
 
 void send_icmp_port_unreachable(struct sr_instance *sr, uint8_t *packet, struct sr_if *interface) {
 	uint8_t *eth_pkt = gen_eth_frame(packet, gen_icmp_packet(3, 3), 3, 3, interface);
-	int result = sr_send_packet(sr, eth_pkt, eth_frame_size, (const char* ) interface);
+	sr_send_packet(sr, eth_pkt, eth_frame_size, (const char* ) interface);
 	free(eth_pkt);
 }
 
 
 void send_icmp_time_exceeded(struct sr_instance *sr, uint8_t *packet, struct sr_if *interface) {
 	uint8_t *eth_pkt = gen_eth_frame(packet, gen_icmp_packet(11, 0), 11, 0, interface);
-	int result = sr_send_packet(sr, eth_pkt, eth_frame_size, (const char* ) interface);
+	sr_send_packet(sr, eth_pkt, eth_frame_size, (const char* ) interface);
 	free(eth_pkt);
 }
