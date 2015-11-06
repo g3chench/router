@@ -35,8 +35,8 @@ You may want to create additional structs for ICMP messages for
 /*
  * Return an ICMP packet header given its type and code. 
  */
-uint8_t* gen_icmp_packet (int type, int code) {
-	uint8_t *icmp_pkt = malloc(sizeof(sr_icmp_hdr_t) + sizeof(uint8_t) * ICMP_DATA_SIZE);
+sr_icmp_hdr_t *gen_icmp_packet (int type, int code) {
+	sr_icmp_hdr_t *icmp_pkt = malloc(sizeof(sr_icmp_hdr_t) * ICMP_DATA_SIZE);
 	/* pad icmp cargo with 0's */
 	bzero(icmp_pkt + sizeof(sr_icmp_t3_hdr_t), ICMP_DATA_SIZE);
 	
@@ -48,7 +48,7 @@ uint8_t* gen_icmp_packet (int type, int code) {
 		    icmp_hdr->icmp_code = 0;
 		    icmp_hdr->icmp_sum = 0;
 			icmp_hdr->icmp_sum = cksum(icmp_hdr + sizeof(sr_icmp_hdr_t), ICMP_DATA_SIZE);
-			icmp_pkt = (uint8_t *)icmp_hdr;
+			icmp_pkt = icmp_hdr;
 			break;
 		}
 		case 8: {
@@ -58,7 +58,7 @@ uint8_t* gen_icmp_packet (int type, int code) {
 		    icmp_hdr->icmp_code = 0;
 		    icmp_hdr->icmp_sum = 0;
 			icmp_hdr->icmp_sum = cksum(icmp_hdr + sizeof(sr_icmp_hdr_t), ICMP_DATA_SIZE);
-			icmp_pkt = (uint8_t *)icmp_hdr;
+			icmp_pkt = icmp_hdr;
 			break;
 		}
 		case 11: {
@@ -68,7 +68,7 @@ uint8_t* gen_icmp_packet (int type, int code) {
 		    icmp_hdr->icmp_code = 0;
 		    icmp_hdr->icmp_sum = 0;
 			icmp_hdr->icmp_sum = cksum(icmp_hdr + sizeof(sr_icmp_hdr_t), ICMP_DATA_SIZE);
-			icmp_pkt = (uint8_t *)icmp_hdr;
+			icmp_pkt = icmp_hdr;
 			break;
 		}
 		case 3: {
@@ -77,7 +77,7 @@ uint8_t* gen_icmp_packet (int type, int code) {
 			icmp_hdr->icmp_type = 3;
 			icmp_hdr->icmp_sum = 0;
 			icmp_hdr->icmp_sum = cksum(icmp_hdr + sizeof(sr_icmp_t3_hdr_t), ICMP_DATA_SIZE);
-			icmp_pkt = (uint8_t *)icmp_hdr;
+			icmp_pkt = (sr_icmp_hdr_t*) icmp_hdr;
 			icmp_hdr->next_mtu = htons(512);
 
 			switch (code) {				
@@ -129,7 +129,7 @@ uint8_t* gen_icmp_packet (int type, int code) {
                       		   -----------------------
     */
 
-uint8_t* gen_eth_frame (uint8_t* packet, uint8_t *icmp_pkt, int icmp_type, int icmp_code, struct sr_if* interface) {
+uint8_t* gen_eth_frame (uint8_t* packet, sr_icmp_hdr_t *icmp_pkt, int icmp_type, int icmp_code, struct sr_if* interface) {
 	printf("in gen_eth_frame\n------------------\n");
 	/* Create the ethernet header*/
 	sr_ethernet_hdr_t *eth_hdr = malloc(sizeof(eth_hdr));
@@ -155,20 +155,19 @@ uint8_t* gen_eth_frame (uint8_t* packet, uint8_t *icmp_pkt, int icmp_type, int i
 	printf('icmp_type: %n\n', icmp_type);
 	printf('icmp_code: %n\n', icmp_code);
 	
-	if (icmp_type == 0 && icmp_code == 0) {
-		if (icmp_code == 0) { 						/* ICMP ECHO REPLY*/
-			uint32_t dst = ip_hdr->ip_dst;			/* swap the src and dst ip's*/
-			ip_hdr->ip_dst = ip_hdr->ip_src;
-			ip_hdr->ip_src = dst;
-		}
-	}
-	else if (icmp_type == 3) {						/* ICMP PORT UNREACHABLE*/
-		if (icmp_code == 3) {
-			ip_hdr->ip_src = interface->ip;	
+	if (icmp_type == 0 && icmp_code == 0) {			/* ICMP ECHO REPLY*/
+		uint32_t dst = ip_hdr->ip_dst;				/* swap the src and dst ip's*/
+		ip_hdr->ip_dst = ip_hdr->ip_src;
+		ip_hdr->ip_src = dst;
+
+	} else if (icmp_type == 3) {						
+		if (icmp_code == 3) {						/* ICMP PORT UNREACHABLE*/
+			ip_hdr->ip_src = interface->ip;			
 		} else {									/* ICMP NET/HOST UNREACHABLE*/
 			ip_hdr->ip_src = ip_hdr->ip_dst;
 		}
 		ip_hdr->ip_dst = ip_hdr->ip_src;
+
 	} else if (icmp_type == 11 && icmp_code == 0) {		/* ICMP TIME EXCEEDED */
 		ip_hdr->ip_src = interface->ip;
 		ip_hdr->ip_dst = ip_hdr->ip_src;
