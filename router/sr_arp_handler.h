@@ -7,6 +7,4 @@ void handle_arp_request(struct sr_instance* sr, uint8_t * packet, unsigned int l
 
 void handle_arp_reply(struct sr_instance* sr, struct sr_arpreq* arpReq);
 
-void send_arp_req(struct sr_instance* sr, uint32_t gw, struct sr_if* interface);
-
 #endif

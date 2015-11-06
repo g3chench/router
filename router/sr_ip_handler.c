@@ -197,9 +197,10 @@ void ip_handler(struct sr_instance* sr,
 
 
           /*IMPLEMENT THIS: SEND AN ARP REQUEST!!!!!!!!!!!!!!!!!!!!!!!!!!!! WHEN DEST MAC ADDRESS UNKNOWN*/
+          /* DONT KNOW WHAT TO DO!*/
           } else {
               /* No entry found in ARP cache, send ARP request */
-              printf("TESTING: No entry found in ARP Cache\n");
+          /*    printf("TESTING: No entry found in ARP Cache\n");
               prinf("reqeust an entry. send ARP REQUEST\n");
 
               memset(eth_hdr->ether_dhost, 0, sizeof(uint8_t) * 6);
@@ -208,8 +209,8 @@ void ip_handler(struct sr_instance* sr,
               struct sr_arpreq* req = sr_arpcache_queuereq(&sr->cache, matching_entry->gw.s_addr, eth_hdr, len + sizeof(sr_ethernet_hdr_t) \
                           ,matching_entry->interface);
               assert(req!=NULL);
-              /* send the ARP request packet*/
-              handle_ARP_req(sr, &sr->cache,req);
+              /* send the ARP request packet*/*/
+              han(sr, &sr->cache,req);
 
               printf("DONE\n");
           }
