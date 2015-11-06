@@ -54,7 +54,7 @@ uint8_t* gen_icmp_packet (uint8_t type, uint8_t code) {
 	printf("type: %d\n", type);
 	printf("code: %d\n", code);
 
-	uint8_t icmp_pkt = 0;
+	uint8_t *icmp_pkt = 0;
 
 	switch (type) {
 		case 0: {
@@ -126,7 +126,7 @@ uint8_t* gen_icmp_packet (uint8_t type, uint8_t code) {
 
 	} /* end of outer switch statement*/
 
-	return &icmp_pkt;
+	return icmp_pkt;
 }
 
 
