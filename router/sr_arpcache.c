@@ -48,12 +48,9 @@ void handle_arpreq(struct sr_instance *sr, struct sr_arpreq* req) {
         
         } else {
             /*  no entry found in arp cache, send ARP request */
-            if (req->packets != NULL) {
-                handle_arp_reply(sr, req);
-                req->sent = now;
-                req->times_sent++;
-
-            }
+            handle_arp_reply(sr, req);
+            req->sent = now;
+            req->times_sent++;
         }
     }
 }
