@@ -36,19 +36,24 @@ void handle_arpreq(struct sr_instance *sr, struct sr_arpreq* req) {
 
     if (difftime(now, req->sent) > 1.0) {
         if (req->times_sent >= 5) {
-            struct sr_packet *packet = req->packets;
+            struct sr_packet* current_packet = req->packets;
 
             /* Send icmp host unreachable to source addr of all pkts waiting on this request */
-            while (packet) {
-                send_icmp_host_unreachable(sr, (uint8_t*) packet, sr_get_interface(sr, packet->iface));
-                packet = packet->next;
+            while (current_packet) {
+                struct sr_packet* ip_pkt = (struct sr_packet *)(current_packet->buf + sizeof(sr_ethernet_hdr_t));
+                send_icmp_host_unreachable(sr, (uint8_t*)ip_pkt, sr_get_interface(sr, current_packet->iface));
+                current_packet = current_packet->next;
             }
-
             sr_arpreq_destroy(&sr->cache, req);
+        
         } else {
-            handle_arp_reply(sr, req);
-            req->sent = now;
-            req->times_sent++;
+            /*  no entry found in arp cache, send ARP request */
+            if (req->packets != NULL) {
+                handle_arp_reply(sr, req);
+                req->sent = now;
+                req->times_sent++;
+
+            }
         }
     }
 }

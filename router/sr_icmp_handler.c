@@ -160,12 +160,12 @@ uint8_t* gen_eth_frame (uint8_t* packet, uint8_t *icmp_pkt, struct sr_if* interf
 
 	
 	sr_icmp_hdr_t* icmp_hdr = (sr_icmp_hdr_t*) icmp_pkt;
-	print_hdr_icmp(icmp_pkt);
+/*	print_hdr_icmp(icmp_pkt);*/
 
 	uint8_t icmp_type = icmp_hdr->icmp_type;
 	uint8_t icmp_code = icmp_hdr->icmp_code;
 
-	print_hdr_icmp((uint8_t)icmp_hdr);
+/*	print_hdr_icmp((uint8_t)icmp_hdr);*/
 
 	if (icmp_type == 0 && icmp_code == 0) {         /* ICMP ECHO REPLY*/
 			uint32_t dst = ip_hdr->ip_dst;			/* swap the src and dst ip's*/
@@ -207,11 +207,11 @@ uint8_t* gen_eth_frame (uint8_t* packet, uint8_t *icmp_pkt, struct sr_if* interf
 	memcpy(new_eth_pkt, eth_hdr, sizeof(sr_ethernet_hdr_t));
 	memcpy(eth_cargo, ip_hdr, sizeof(sr_ip_hdr_t));
 	memcpy(ip_cargo, icmp_pkt, sizeof(sr_icmp_hdr_t) + ICMP_DATA_SIZE);
-
+/*
 	printf("printing out the ethernet packets");
 	print_hdr_eth(new_eth_pkt);
 	print_hdr_ip(eth_cargo);
-	print_hdr_icmp(ip_cargo);
+	print_hdr_icmp(ip_cargo);*/
 	return (uint8_t*) new_eth_pkt;
 }
 
