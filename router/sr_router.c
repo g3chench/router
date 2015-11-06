@@ -95,7 +95,8 @@ void sr_handlepacket(struct sr_instance* sr,
 
     /* Get Ethernet's frame */
     uint16_t frame = ethertype(packet);
-
+    /*uint16_t frame = ntohs(eth_hdr->ether_type);*/
+    
     switch(frame){
         /* If it's an ARP Packet */
         case ethertype_arp:

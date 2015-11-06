@@ -72,7 +72,7 @@ void ip_handler(struct sr_instance* sr,
 
   uint16_t expectedSum = ip_hdr->ip_sum;
   ip_hdr->ip_sum = 0;
-  uint16_t actualSum = cksum(ip_hdr, ip_hdr->ip_hl * 4);
+  uint16_t actualSum = cksum(ip_hdr, ntohs(ip_hdr->ip_len) - (ip_hdr->ip_hl * 4));
  
   if (expectedSum != actualSum) {
       fprintf(stderr,"TESTING: Expected Checksum is %i\n", expectedSum);
@@ -84,7 +84,6 @@ void ip_handler(struct sr_instance* sr,
   ip_hdr->ip_sum = expectedSum;
 
   /* else this IP packet is valid: */
-    
   /* Check that the ip packet is being sent to this host, sr_router */
   struct sr_if *out_interface = get_output_interface(sr, ip_hdr->ip_dst);
 
@@ -163,8 +162,14 @@ void ip_handler(struct sr_instance* sr,
           
           struct sr_if* fwd_out_if = sr_get_interface(sr, matching_entry->interface);
 
-          /* search for the next hop MAC address in the cache */          
-          struct sr_arpentry *arp_entry = sr_arpcache_lookup(&sr->cache, ip_hdr->ip_dst);
+          struct sr_arpcache* cache = &sr->cache;
+          struct sr_arpentry* entries = cache->entries;
+          printf("entry: %i\n", entries->ip);
+
+
+          /* search for the next hop MAC address in the cache */ 
+          struct sr_arpentry* arp_entry = sr_arpcache_lookup(&(sr->cache), matching_entry->gw.s_addr);
+/*          printf("sr cache first etry %i\n", (sr->cache.entries->ip));*/
           printf("Check if this mac address exists =========================\n");
           printf("arp_entry->ip: %i\n", arp_entry->ip);
 
@@ -189,8 +194,7 @@ void ip_handler(struct sr_instance* sr,
               struct sr_arpreq *req = sr_arpcache_queuereq(&sr->cache, ip_hdr->ip_dst, packet, len, interface);
               handle_arpreq(sr, req);
           }
-        
-          /*send_icmp_net_unreachable(sr, packet, in_interface);   */
+
       }
   }
 
