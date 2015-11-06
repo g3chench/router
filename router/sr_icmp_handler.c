@@ -39,14 +39,21 @@ uint8_t* gen_icmp_packet (uint8_t type, uint8_t code) {
 
 	printf("in gen icmp_pkt function===================================================");
 
+	printf("type: %d\n", type);
+	printf("code: %d\n", code);
+
 	uint8_t *icmp_pkt = malloc(sizeof(sr_icmp_hdr_t) + sizeof(uint8_t) * ICMP_DATA_SIZE);
-	/* pad icmp cargo with 0's */
-	print_hdr_icmp(icmp_pkt);
+	 /* pad icmp cargo with 0's
+	// print_hdr_icmp(icmp_pkt);
+
+	// printf("pad cargo\n");
+	// bzero(icmp_pkt, sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t));
 	
-	printf("pad cargo\n");
-	bzero(icmp_pkt + sizeof(sr_icmp_t3_hdr_t), ICMP_DATA_SIZE);
-	
-	print_hdr_icmp(icmp_pkt);
+	// print_hdr_icmp(icmp_pkt); */
+
+	printf("type: %d\n", type);
+	printf("code: %d\n", code);
+
 	switch (type) {
 		case 0: {
 			/* ICMP type: echo reply*/
