@@ -39,10 +39,10 @@ uint8_t* gen_icmp_packet (uint8_t type, uint8_t code) {
 
 	printf("in gen icmp_pkt function===================================================");
 
-	print_hdr_icmp(icmp_pkt);
-
 	uint8_t *icmp_pkt = malloc(sizeof(sr_icmp_hdr_t) + sizeof(uint8_t) * ICMP_DATA_SIZE);
 	/* pad icmp cargo with 0's */
+	print_hdr_icmp(icmp_pkt);
+	
 	printf("pad cargo\n");
 	bzero(icmp_pkt + sizeof(sr_icmp_t3_hdr_t), ICMP_DATA_SIZE);
 	
