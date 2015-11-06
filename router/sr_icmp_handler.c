@@ -155,12 +155,10 @@ uint8_t* gen_eth_frame (uint8_t* packet, uint8_t *icmp_pkt, int icmp_type, int i
 	printf('icmp_type: %n\n', icmp_type);
 	printf('icmp_code: %n\n', icmp_code);
 	
-	if (icmp_type == 0 && icmp_code == 0) {
-		if (icmp_code == 0) { 						/* ICMP ECHO REPLY*/
+	if (icmp_type == 0 && icmp_code == 0) {         /* ICMP ECHO REPLY*/
 			uint32_t dst = ip_hdr->ip_dst;			/* swap the src and dst ip's*/
 			ip_hdr->ip_dst = ip_hdr->ip_src;
 			ip_hdr->ip_src = dst;
-		}
 	}
 	else if (icmp_type == 3) {						/* ICMP PORT UNREACHABLE*/
 		if (icmp_code == 3) {
