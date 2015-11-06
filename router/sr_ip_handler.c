@@ -159,6 +159,7 @@ void ip_handler(struct sr_instance* sr,
          
           if (!matching_entry) {
               printf("There is no matching entry in the forwarding table\n");
+              printf("sending ICMP NET UNREACHABLE!!!!\n");
               /* No possible route to our destination, send ICMP Net unreachable message*/
               send_icmp_net_unreachable(sr, packet, in_interface);
               return;
