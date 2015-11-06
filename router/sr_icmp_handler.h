@@ -1,7 +1,7 @@
 #ifndef SR_ICMP_HANDLER_H
 #define SR_ICMP_HANDLER_H
 
-sr_icmp_hdr_t *gen_icmp_packet (int type, int code);
+uint8_t* gen_icmp_packet (int type, int code);
 
 uint8_t* gen_eth_frame (uint8_t *packet, uint8_t *icmp_pkt, struct sr_if *interface);
 

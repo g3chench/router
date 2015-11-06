@@ -35,7 +35,6 @@ You may want to create additional structs for ICMP messages for
 /*
  * Return an ICMP packet header given its type and code. 
  */
-
 uint8_t* gen_icmp_packet (int type, int code) {
 
 	printf("in gen icmp_pkt function===================================================");
@@ -54,7 +53,7 @@ uint8_t* gen_icmp_packet (int type, int code) {
 		    icmp_hdr->icmp_code = 0;
 		    icmp_hdr->icmp_sum = 0;
 			icmp_hdr->icmp_sum = cksum(icmp_hdr + sizeof(sr_icmp_hdr_t), ICMP_DATA_SIZE);
-			icmp_pkt = icmp_hdr;
+			icmp_pkt = (uint8_t *)icmp_hdr;
 			break;
 		}
 		case 8: {
@@ -64,7 +63,7 @@ uint8_t* gen_icmp_packet (int type, int code) {
 		    icmp_hdr->icmp_code = 0;
 		    icmp_hdr->icmp_sum = 0;
 			icmp_hdr->icmp_sum = cksum(icmp_hdr + sizeof(sr_icmp_hdr_t), ICMP_DATA_SIZE);
-			icmp_pkt = icmp_hdr;
+			icmp_pkt = (uint8_t *)icmp_hdr;
 			break;
 		}
 		case 11: {
@@ -74,7 +73,7 @@ uint8_t* gen_icmp_packet (int type, int code) {
 		    icmp_hdr->icmp_code = 0;
 		    icmp_hdr->icmp_sum = 0;
 			icmp_hdr->icmp_sum = cksum(icmp_hdr + sizeof(sr_icmp_hdr_t), ICMP_DATA_SIZE);
-			icmp_pkt = icmp_hdr;
+			icmp_pkt = (uint8_t *)icmp_hdr;
 			break;
 		}
 		case 3: {
@@ -83,7 +82,7 @@ uint8_t* gen_icmp_packet (int type, int code) {
 			icmp_hdr->icmp_type = 3;
 			icmp_hdr->icmp_sum = 0;
 			icmp_hdr->icmp_sum = cksum(icmp_hdr + sizeof(sr_icmp_t3_hdr_t), ICMP_DATA_SIZE);
-			icmp_pkt = (sr_icmp_hdr_t*) icmp_hdr;
+			icmp_pkt = (uint8_t *)icmp_hdr;
 			icmp_hdr->next_mtu = htons(512);
 
 			switch (code) {				
@@ -160,7 +159,6 @@ uint8_t* gen_eth_frame (uint8_t* packet, uint8_t *icmp_pkt, struct sr_if* interf
 	/* Set the source and destination IP's depending on the ICMP code and type*/
 
 	
-<<<<<<< HEAD
 	sr_icmp_hdr_t* icmp_hdr = (sr_icmp_hdr_t*) icmp_pkt;
 	print_hdr_icmp(icmp_pkt);
 
@@ -181,7 +179,6 @@ uint8_t* gen_eth_frame (uint8_t* packet, uint8_t *icmp_pkt, struct sr_if* interf
 			ip_hdr->ip_src = ip_hdr->ip_dst;
 		}
 		ip_hdr->ip_dst = ip_hdr->ip_src;
-
 	} else if (icmp_type == 11 && icmp_code == 0) {		/* ICMP TIME EXCEEDED */
 		ip_hdr->ip_src = interface->ip;
 		ip_hdr->ip_dst = ip_hdr->ip_src;
