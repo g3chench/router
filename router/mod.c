@@ -16,7 +16,9 @@
 struct sr_if *get_output_interface(struct sr_instance *sr, uint32_t address) {
 
   printf("TESTING: BEFORE current_node\n");
+  
   struct sr_if *current_node = sr->if_list;
+
   printf("TESTING: AFTER current_node\n");
   
   while (current_node) {
@@ -31,7 +33,7 @@ struct sr_if *get_output_interface(struct sr_instance *sr, uint32_t address) {
   return NULL;
 }
 
-struct sr_rt* lpm(struct sr_instance* sr, uint8_t* packet, struct sr_if* in_interface, sr_ip_hdr_t* ip_hdr) {
+int lpm(struct sr_instance, struct sr_if* in_interface, sr_ip_hdr_t* ip_hdr) {
     struct sr_rt *current_node = sr->routing_table;
 
           printf("BEGIN LPM SEARCH ==============================================================\n");
@@ -57,7 +59,6 @@ struct sr_rt* lpm(struct sr_instance* sr, uint8_t* packet, struct sr_if* in_inte
               current_node = current_node->next;
           }
 
-
           printf("Now out of the loop..-------------------\n");
          
           if (!matching_entry) {
@@ -74,26 +75,6 @@ struct sr_rt* lpm(struct sr_instance* sr, uint8_t* packet, struct sr_if* in_inte
           return matching_entry;
 }
 
-
-/**
- * Return the ARP entry if found in the arpcache given the ethernet header and LPM entry.
- * Null is returned otherwise.
- */
-struct sr_arpentry* search_arpcache(struct sr_instance* sr, uint8_t* packet, struct sr_rt* matching_entry) {
-
-    printf("SEARCH FOR MAC ADDR THRU ARP CACHE ================================\n");
-    struct sr_arpcache* cache = &(sr->cache);
-    /* search for the next hop MAC address in the cache */ 
-    struct sr_arpentry* arp_entry = sr_arpcache_lookup(cache, matching_entry->gw.s_addr);
-    /* printf("sr cache first etry %i\n", (sr->cache.entries->ip));*/
-    printf("Check if this mac address exists ========================================\n");
-    
-    return arp_entry;
-}
-
-
-
-
 /*
  * sr_router must check if it's an IP packet
  * then call this function
@@ -104,13 +85,23 @@ void ip_handler(struct sr_instance* sr,
         char *interface) {
   printf("TESTING: In ip_handler function..\n");
   struct sr_if* in_interface = (struct sr_if*) interface;
- 
+  /*
+              Ethernet frame
+    --------------------------------------------
+    | Ethernet hdr |       IP Packet           |
+    --------------------------------------------
+
+                    ----------------------------
+                    | IP hdr |   IP Packet     |
+                    ----------------------------
+  */
   /* store the ip packet from the ethernet frame */
   sr_ip_hdr_t *ip_hdr = (sr_ip_hdr_t *) (packet + sizeof(sr_ethernet_hdr_t));
   /* fprintf(stdout, "Received IP %s from %s on %s\n", 
                   ip_hdr->ip==ip_protocol_icmp?"ICMP":"IP", 
                   ip_)
   */
+
 
   /* sanity check the IP packet */
   size_t min_len = sizeof(sr_ip_hdr_t);
@@ -164,6 +155,7 @@ void ip_handler(struct sr_instance* sr,
   } else {
       printf("Forward this packet to another router...\n");
       
+
       if (ip_hdr->ip_ttl == 1) {                        /* TTL = 0 send ICMP echo request */
         fprintf(stderr, "Packet's TTL is 1");
         send_icmp_echo_request(sr, packet, in_interface);
@@ -179,30 +171,39 @@ void ip_handler(struct sr_instance* sr,
           */
           printf("Forward this packet to another router...\n");
           
-          struct sr_rt* matching_entry = lpm(sr, packet, in_interface, ip_hdr);
-          struct sr_arpentry* arp_entry = search_arpcache(sr, packet, matching_entry);
-          /* this is ethernet frame containing he packet*/
+          /*here*/
+          struct sr_rt* matching_entry = lpm(sr, in_interface, ip_hdr);
+
+
+          printf("SEARCH FOR MAC ADDR THRU ARP CACHE ================================\n");
+          /* Build the outgoing ethernet frame to forward to another router */
           sr_ethernet_hdr_t *eth_hdr = (sr_ethernet_hdr_t*) (packet);
           print_hdr_eth((uint8_t*) eth_hdr);
 
+          struct sr_if* fwd_out_if = sr_get_interface(sr, matching_entry->interface);
+          sr_print_if(fwd_out_if);
+
+          struct sr_arpcache* cache = &(sr->cache);
+          /* search for the next hop MAC address in the cache */ 
+          struct sr_arpentry* arp_entry = sr_arpcache_lookup(cache, matching_entry->gw.s_addr);
+/*          printf("sr cache first etry %i\n", (sr->cache.entries->ip));*/
+          printf("Check if this mac address exists ========================================\n");
+          
           /* found a hit in the ARP cache*/
           if (arp_entry) {
               printf("FOUND AN ARPCACHE HIT!\n");
-              /* Build the outgoing ethernet frame to forward to another router */
+              /*Fill out the ethernet header to send*/              
               memcpy(eth_hdr->ether_dhost, arp_entry->mac, sizeof(uint8_t) * ETHER_ADDR_LEN);
-              
-              /* Get the ethernet frame's outgoing interface */
-              struct sr_if* fwd_out_if = sr_get_interface(sr, matching_entry->interface);
-              sr_print_if(fwd_out_if);
               memcpy(eth_hdr->ether_shost, fwd_out_if->addr, sizeof(uint8_t) * ETHER_ADDR_LEN);
-              
-              /* fill in other ethernet attributes */
               ip_hdr->ip_ttl--;
               ip_hdr->ip_sum = 0;
               ip_hdr->ip_sum = cksum(ip_hdr, ip_hdr->ip_hl * 4);
               sr_send_packet(sr, packet, len, fwd_out_if->name);
               free(arp_entry);
 
+
+          /*IMPLEMENT THIS: SEND AN ARP REQUEST!!!!!!!!!!!!!!!!!!!!!!!!!!!! WHEN DEST MAC ADDRESS UNKNOWN*/
+          /* DONT KNOW WHAT TO DO!*/
           } else {
               /* No entry found in ARP cache, send ARP request */
               /*    printf("TESTING: No entry found in ARP Cache\n");
