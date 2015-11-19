@@ -113,9 +113,8 @@ void ip_handler(struct sr_instance* sr,
   */
 
   /* sanity check the IP packet */
-  size_t min_len = sizeof(sr_ip_hdr_t);
-
-  if (ip_hdr->ip_len < min_len) {
+  size_t min_len = sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t);
+  if (len < min_len) {
       fprintf(stderr, "Error: Invalid IP packet\n Length of the frame is incorrect\nDropping packet...\n");
       return ;
   } 
@@ -141,23 +140,29 @@ void ip_handler(struct sr_instance* sr,
   /* PACKET SENT TO ME */
   if (out_interface != NULL) {
       printf("This IP packet was sent to me!\n");
-      /* check if IP packet uses ICMP */
-      if (ip_hdr->ip_p == 1) {
-        printf("GOT AN ICMP PACKET\n");
-        sr_icmp_hdr_t* icmp_hdr = (sr_icmp_hdr_t *) (packet + sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t));
-        
-        if (icmp_hdr->icmp_code == 0 && icmp_hdr->icmp_type == 8) {
-          printf("got an ECHO REQUEST\n");
-          send_icmp_echo_reply(sr, packet, in_interface);
+      uint8_t ip_protocol = htons(ip_hdr->ip_p);
+
+      switch (ip_protocol) {
+        case ip_protocol_icmp: {
+          printf("This IP packet contains an ICMP packet.\n");
+          sr_icmp_hdr_t* icmp_hdr = (sr_icmp_hdr_t *) (packet + sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t));
+          
+          if (icmp_hdr->icmp_code == 0 && icmp_hdr->icmp_type == 8) {
+            printf("got an ECHO REQUEST\n");
+            send_icmp_echo_reply(sr, packet, in_interface);
+          }
         }
-
-      /* check if IP packet uses TCP or UDP */
-      } else if (ip_hdr->ip_p == 6 || ip_hdr->ip_p == 17) {
-          printf("GOT A TCP/UDP PACKET\n");
+        case ip_protocol_tcp: {
+          printf(stderr, "This IP packet contains a TCP packet\n");
           send_icmp_port_unreachable(sr, packet, in_interface);
-
-      } else {
-          fprintf(stderr, "Error: this IP packet uses an unrecognized protocol.\nDropping packet...\n");
+        }
+        case ip_protocol_udp: {
+          printf(stderr, "This IP packet contains a UDP packet\n");
+          send_icmp_port_unreachable(sr, packet, in_interface);
+        }
+        default: {
+          printf(stderr, "Error: this IP packet uses an unrecognized protocol.\nDropping packet...\n");
+        }
       }
 
   /* PACKET NOT SENT TO ME*/
@@ -177,7 +182,7 @@ void ip_handler(struct sr_instance* sr,
           * search through linked list of nodes for forwarding
           * table entry using LPM.
           */
-          printf("Forward this packet to another router...\n");
+          printf("This packet is not for us. Forward this packet to another router...\n");
           
           struct sr_rt* matching_entry = lpm(sr, packet, in_interface, ip_hdr);
           struct sr_arpentry* arp_entry = search_arpcache(sr, packet, matching_entry);
@@ -189,13 +194,12 @@ void ip_handler(struct sr_instance* sr,
           if (arp_entry) {
               printf("FOUND AN ARPCACHE HIT!\n");
               /* Build the outgoing ethernet frame to forward to another router */
-              memcpy(eth_hdr->ether_dhost, arp_entry->mac, sizeof(uint8_t) * ETHER_ADDR_LEN);
+              memcpy(eth_hdr->ether_dhost, arp_entry->mac, ETHER_ADDR_LEN);
               
               /* Get the ethernet frame's outgoing interface */
               struct sr_if* fwd_out_if = sr_get_interface(sr, matching_entry->interface);
+              memcpy(eth_hdr->ether_shost, fwd_out_if->addr, ETHER_ADDR_LEN);
               sr_print_if(fwd_out_if);
-              memcpy(eth_hdr->ether_shost, fwd_out_if->addr, sizeof(uint8_t) * ETHER_ADDR_LEN);
-              
               /* fill in other ethernet attributes */
               ip_hdr->ip_ttl--;
               ip_hdr->ip_sum = 0;
