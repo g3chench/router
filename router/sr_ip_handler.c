@@ -33,21 +33,16 @@ struct sr_if *get_output_interface(struct sr_instance *sr, uint32_t address) {
 
 struct sr_rt* lpm(struct sr_instance* sr, uint8_t* packet, struct sr_if* in_interface, sr_ip_hdr_t* ip_hdr) {
     struct sr_rt *current_node = sr->routing_table;
-
-          printf("BEGIN LPM SEARCH ==============================================================\n");
-          printf("==========================================================\n");
           struct sr_rt* matching_entry = NULL;
           unsigned long matching_len = 0;
 
           while (current_node) {
-              printf("ITERATION: CURRENT node-------------------------------\n");
-              printf("ip and node mask       : %i\n", (ip_hdr->ip_dst & current_node->mask.s_addr));
-              printf("dest addr and node_mask: %i\n", (current_node->dest.s_addr & current_node->mask.s_addr));
-              printf("matching_len: %lu\n", matching_len);
                /* perform LPM */
+              printf("Current node\n");
+              sr_print_routing_entry(current_node);
               if (((ip_hdr->ip_dst & current_node->mask.s_addr) == (current_node->dest.s_addr & current_node->mask.s_addr))
                         & (matching_len <= current_node->mask.s_addr)) {
-                printf("We found a LPM match...\n");
+                printf("This is a match\n");
                 matching_entry = current_node;
                 matching_len = current_node->mask.s_addr;
                 break;
@@ -56,21 +51,6 @@ struct sr_rt* lpm(struct sr_instance* sr, uint8_t* packet, struct sr_if* in_inte
               /* go to the next node in the rt_table */
               current_node = current_node->next;
           }
-
-
-          printf("Now out of the loop..-------------------\n");
-         
-          if (!matching_entry) {
-              printf("There is no matching entry in the forwarding table\n");
-              printf("sending ICMP NET UNREACHABLE!!!!\n");
-              /* No possible route to our destination, send ICMP Net unreachable message*/
-              send_icmp_net_unreachable(sr, packet, in_interface);
-          } else {
-             printf("THERE'S A MATCHING DAMN ENTRY IN THE FORWARDING TABLE\n");
-             printf("and here's the DAMN THING:\n");
-             sr_print_routing_entry(matching_entry);
-          }
-
           return matching_entry;
 }
 
@@ -172,10 +152,12 @@ void ip_handler(struct sr_instance* sr,
       if (ip_hdr->ip_ttl == 1) {                        /* TTL = 0 send ICMP echo request */
         fprintf(stderr, "Packet's TTL is 1");
         send_icmp_echo_request(sr, packet, in_interface);
+        return;
 
       } else if (ip_hdr->ip_ttl < 1) {                  /* TTL = 0, expired packet*/
         fprintf(stderr, "Packet's TTL expired");
         send_icmp_time_exceeded(sr, packet, in_interface);
+        return;
 
       } else {
           /* forward the packet if new TTL > 0
@@ -185,46 +167,58 @@ void ip_handler(struct sr_instance* sr,
           printf("This packet is not for us. Forward this packet to another router...\n");
           
           struct sr_rt* matching_entry = lpm(sr, packet, in_interface, ip_hdr);
-          struct sr_arpentry* arp_entry = search_arpcache(sr, packet, matching_entry);
-          /* this is ethernet frame containing he packet*/
-          sr_ethernet_hdr_t *eth_hdr = (sr_ethernet_hdr_t*) (packet);
-          print_hdr_eth((uint8_t*) eth_hdr);
 
-          /* found a hit in the ARP cache*/
-          if (arp_entry) {
-              printf("FOUND AN ARPCACHE HIT!\n");
-              /* Build the outgoing ethernet frame to forward to another router */
-              memcpy(eth_hdr->ether_dhost, arp_entry->mac, ETHER_ADDR_LEN);
-              
-              /* Get the ethernet frame's outgoing interface */
-              struct sr_if* fwd_out_if = sr_get_interface(sr, matching_entry->interface);
-              memcpy(eth_hdr->ether_shost, fwd_out_if->addr, ETHER_ADDR_LEN);
-              sr_print_if(fwd_out_if);
-              /* fill in other ethernet attributes */
-              ip_hdr->ip_ttl--;
-              ip_hdr->ip_sum = 0;
-              ip_hdr->ip_sum = cksum(ip_hdr, ip_hdr->ip_hl * 4);
-              sr_send_packet(sr, packet, len, fwd_out_if->name);
-              free(arp_entry);
+          if (matching_entry) {
+              printf("There's a matching rt entry found\n");
+              sr_print_routing_entry(matching_entry);
+              printf("\n");
 
+              struct sr_arpentry* arp_entry = sr_arpcache_lookup(&(sr->cache), matching_entry->gw.s_addr);
+              /* this is ethernet frame containing he packet*/
+              sr_ethernet_hdr_t *eth_hdr = (sr_ethernet_hdr_t*) (packet);
+
+
+              /* found a hit in the ARP cache*/
+              if (arp_entry) {
+                  printf("FOUND AN ARPCACHE HIT!\n");
+                  /* Build the outgoing ethernet frame to forward to another router */
+                  struct sr_if* fwd_out_if = sr_get_interface(sr, matching_entry->interface);
+                  memcpy(eth_hdr->ether_shost, fwd_out_if->addr, ETHER_ADDR_LEN);
+                  
+                  /* fill in other ethernet attributes */
+                  ip_hdr->ip_sum = 0;
+                  ip_hdr->ip_sum = cksum(ip_hdr, ip_hdr->ip_hl * 4);
+
+
+                  print_hdr_eth((uint8_t*) eth_hdr);
+                  printf("this is the interface");
+                  sr_print_if(fwd_out_if);
+
+                  sr_send_packet(sr, packet, len, fwd_out_if->name);
+                  return;
+
+              } else {
+                  /* No entry found in ARP cache, send ARP request */
+                  /*    printf("TESTING: No entry found in ARP Cache\n");
+                  prinf("reqeust an entry. send ARP REQUEST\n");
+\
+                  /* Cache doesnt have this entry, So request it */ 
+                  printf("Coudln't find arp cache hit, handlearp\n");
+                  struct sr_arpreq* req = sr_arpcache_queuereq(&sr->cache,
+                                                              matching_entry->gw.s_addr,
+                                                              (uint8_t*) eth_hdr,
+                                                              len + sizeof(sr_ethernet_hdr_t),
+                                                              matching_entry->interface);
+                  assert(req!=NULL);
+                  /* send the ARP request packet*/
+                  handle_arpreq(sr, req);
+                  printf("DONE\n");
+              }
+          /* end of: if matching routing table entry is found */
           } else {
-              /* No entry found in ARP cache, send ARP request */
-              /*    printf("TESTING: No entry found in ARP Cache\n");
-              prinf("reqeust an entry. send ARP REQUEST\n");
-
-              memset(eth_hdr->ether_dhost, 0, sizeof(uint8_t) * 6);
-              uint8_t *packet = (uint8_t*)malloc(sizeof(uint8_t)*(sizeof(eth_hdr_t) + sizeof(ip_hdr_t) + sizeof(sr_icmp_hdr_t) + ICMP_DATA_SIZE)); */
-              /* Cache doesnt have this entry, So request it */
-              struct sr_arpreq* req = sr_arpcache_queuereq(&sr->cache,
-                                                          matching_entry->gw.s_addr,
-                                                          (uint8_t*) eth_hdr,
-                                                          len + sizeof(sr_ethernet_hdr_t),
-                                                          matching_entry->interface);
-              assert(req!=NULL);
-              /* send the ARP request packet*/
-              handle_arpreq(sr, req);
-
-              printf("DONE\n");
+              printf("not matching rt entry found \n");
+              send_icmp_host_unreachable(sr, packet, in_interface);
+              return ;
           }
 
       }

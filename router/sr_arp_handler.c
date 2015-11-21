@@ -84,7 +84,6 @@ void handle_arp_reply(struct sr_instance* sr,
         while (currPkt) {
             sr_ethernet_hdr_t *etherhdr = (sr_ethernet_hdr_t *) currPkt->buf;
             sr_arp_hdr_t *arpHeader = (sr_arp_hdr_t *)(currPkt + sizeof(sr_ethernet_hdr_t));
-
             memcpy(etherhdr->ether_dhost, arpHeader->ar_sha, ETHER_ADDR_LEN);
             memcpy(etherhdr->ether_shost, arpHeader->ar_tha, ETHER_ADDR_LEN);
 
