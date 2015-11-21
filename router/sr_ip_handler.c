@@ -140,7 +140,7 @@ void ip_handler(struct sr_instance* sr,
   /* PACKET SENT TO ME */
   if (out_interface != NULL) {
       printf("This IP packet was sent to me!\n");
-      uint8_t ip_protocol = htons(ip_hdr->ip_p);
+      uint8_t ip_protocol = ip_hdr->ip_p;
 
       switch (ip_protocol) {
         case ip_protocol_icmp: {
@@ -153,15 +153,15 @@ void ip_handler(struct sr_instance* sr,
           }
         }
         case ip_protocol_tcp: {
-          printf(stderr, "This IP packet contains a TCP packet\n");
+          printf("This IP packet contains a TCP packet\n");
           send_icmp_port_unreachable(sr, packet, in_interface);
         }
         case ip_protocol_udp: {
-          printf(stderr, "This IP packet contains a UDP packet\n");
+          printf("This IP packet contains a UDP packet\n");
           send_icmp_port_unreachable(sr, packet, in_interface);
         }
         default: {
-          printf(stderr, "Error: this IP packet uses an unrecognized protocol.\nDropping packet...\n");
+          printf("Error: this IP packet uses an unrecognized protocol.\nDropping packet...\n");
         }
       }
 
