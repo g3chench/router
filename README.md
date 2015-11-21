@@ -19,7 +19,7 @@ This router routes Ethernet packets between a host and clients with a static rou
     - If it's a TCP/UCP packet, send ICMP port unreachable message
     - If it's neither, packet is discarded
     
-  - If it'a for someone else
+  - If it's for someone else
     
     - Check checksum of the packet (discard if checksum is incorrect)
     - Send ICMP echo request if packet's TTL is 1, ICMP time exceeded message if TTL is less than 1, decrement TTL otherwise
