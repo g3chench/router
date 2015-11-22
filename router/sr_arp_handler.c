@@ -16,6 +16,7 @@ void arp_handler(struct sr_instance* sr,
                   char* interface,
                   unsigned int minLen,
                   uint16_t frame){
+    printf("TESTING: IN ARP HANDLER\n");
     sr_arp_hdr_t *arpHeader = (sr_arp_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t));
     /* Add ARP Header length to minLen with Ethernet header length */
     minLen += sizeof(sr_arp_hdr_t);
@@ -61,6 +62,8 @@ void handle_arp_request(struct sr_instance* sr,
                         struct sr_if* sr_interface,
                         sr_arp_hdr_t *arpHeader,
                         sr_ethernet_hdr_t *etherHeader) {
+
+    printf("IN ARP HANDLE REQUEST\n");
     if (ntohl(sr_interface->ip) == ntohl(arpHeader->ar_tip)){
         memcpy(etherHeader->ether_dhost, etherHeader->ether_shost, ETHER_ADDR_LEN);
         memcpy(etherHeader->ether_shost, sr_interface->addr, ETHER_ADDR_LEN);
@@ -79,6 +82,7 @@ void handle_arp_request(struct sr_instance* sr,
 
 void handle_arp_reply(struct sr_instance* sr,
                     struct sr_arpreq* arpReq) {
+    printf("IN handle_arp_reply\n");
     if (arpReq) {
         struct sr_packet* currPkt = arpReq->packets;
         while (currPkt) {

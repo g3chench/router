@@ -14,20 +14,14 @@
 #include "sr_arp_handler.h"
 
 struct sr_if *get_output_interface(struct sr_instance *sr, uint32_t address) {
-
-  printf("TESTING: BEFORE current_node\n");
   struct sr_if *current_node = sr->if_list;
-  printf("TESTING: AFTER current_node\n");
   
   while (current_node) {
     if (address == current_node->ip) {
-      printf("TESTING: FIRST return\n");
       return current_node;
     }
     current_node = current_node->next;
   }
-
-  printf("TESTING: SECOND return\n");
   return NULL;
 }
 
@@ -87,10 +81,6 @@ void ip_handler(struct sr_instance* sr,
  
   /* store the ip packet from the ethernet frame */
   sr_ip_hdr_t *ip_hdr = (sr_ip_hdr_t *) (packet + sizeof(sr_ethernet_hdr_t));
-  /* fprintf(stdout, "Received IP %s from %s on %s\n", 
-                  ip_hdr->ip==ip_protocol_icmp?"ICMP":"IP", 
-                  ip_)
-  */
 
   /* sanity check the IP packet */
   size_t min_len = sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t);
@@ -100,19 +90,20 @@ void ip_handler(struct sr_instance* sr,
   } 
 
   /* calculate the checksum*/
-  uint16_t expectedSum = ip_hdr->ip_sum;
+  uint16_t expected_sum = ip_hdr->ip_sum;
   ip_hdr->ip_sum = 0;
-  uint16_t actualSum = 0;
-  actualSum = cksum(ip_hdr, ip_hdr->ip_hl * 4);
+  int ip_hl =ip_hdr->ip_hl * 4;
+  uint16_t actual_sum = 0; 
+  actual_sum = cksum(ip_hdr, ip_hdr->ip_hl * 4);
  
-  if (expectedSum != actualSum) {
-      fprintf(stderr,"TESTING: Expected Checksum is %i\n", expectedSum);
-      fprintf(stderr,"TESTING: Actual Checksum is %i\n", actualSum);
+  if (expected_sum != actual_sum) {
+      fprintf(stderr,"TESTING: Expected Checksum is %i\n", expected_sum);
+      fprintf(stderr,"TESTING: Actual Checksum is %i\n", actual_sum);
       fprintf(stderr, "Error: Invalid IP packet\n Checksum does not match\nDropping packet...\n");
       return ;
   }
-
-
+  ip_hdr->ip_sum = expected_sum;
+  
   /* else this IP packet is valid: */
   /* Check that the ip packet is being sent to this host, sr_router */
   struct sr_if *out_interface = get_output_interface(sr, ip_hdr->ip_dst);
@@ -129,9 +120,22 @@ void ip_handler(struct sr_instance* sr,
           
           if (icmp_hdr->icmp_code == 0 && icmp_hdr->icmp_type == 8) {
             printf("got an ECHO REQUEST\n");
-            send_icmp_echo_reply(sr, packet, in_interface);
-          }
-        }
+
+            /* sanity check the ICMP packet*/
+            uint16_t icmp_expected_sum = icmp_hdr->icmp_sum;
+            icmp_hdr->icmp_sum = 0;
+            uint16_t icmp_actual_sum = 0;
+            icmp_actual_sum = cksum(icmp_hdr, ntohs(ip_hdr->ip_len) - ip_hl);
+            
+            if (icmp_expected_sum == icmp_actual_sum) {
+              icmp_hdr->icmp_sum = icmp_expected_sum;
+              send_icmp_echo_reply(sr, packet, in_interface);  
+            } else {
+              fprintf(stderr, "Error: Invalid ICMP echo request.\n Checksum does not match...\n");
+            }
+            
+          } /* End of icmp packet checksum matching*/
+        } /* end of icmp case*/
         case ip_protocol_tcp: {
           printf("This IP packet contains a TCP packet\n");
           send_icmp_port_unreachable(sr, packet, in_interface);
@@ -145,9 +149,9 @@ void ip_handler(struct sr_instance* sr,
         }
       }
 
-  /* PACKET NOT SENT TO ME*/
+  /* PACKET NOT SENT TO ME */
   } else {
-      printf("Forward this packet to another router...\n");
+      printf("THIS PACKET WAS NOT SENT TO ME!...\n");
       
       if (ip_hdr->ip_ttl == 1) {                        /* TTL = 0 send ICMP echo request */
         fprintf(stderr, "Packet's TTL is 1");
@@ -165,18 +169,18 @@ void ip_handler(struct sr_instance* sr,
           * table entry using LPM.
           */
           printf("This packet is not for us. Forward this packet to another router...\n");
+          ip_hdr->ip_ttl--;
+          ip_hdr->ip_sum = 0;
+          ip_hdr->ip_sum = cksum(ip_hdr, ip_hdr->ip_hl * 4);
           
-          struct sr_rt* matching_entry = lpm(sr, packet, in_interface, ip_hdr);
-
+          /* Use LPM for routing table lookup*/
+          struct sr_rt* matching_entry = lpm(sr, packet, in_interface, ip_hdr);          
           if (matching_entry) {
-              printf("There's a matching rt entry found\n");
-              sr_print_routing_entry(matching_entry);
-              printf("\n");
+              printf("RT entry match\n");
 
               struct sr_arpentry* arp_entry = sr_arpcache_lookup(&(sr->cache), matching_entry->gw.s_addr);
               /* this is ethernet frame containing he packet*/
               sr_ethernet_hdr_t *eth_hdr = (sr_ethernet_hdr_t*) (packet);
-
 
               /* found a hit in the ARP cache*/
               if (arp_entry) {
@@ -184,39 +188,37 @@ void ip_handler(struct sr_instance* sr,
                   /* Build the outgoing ethernet frame to forward to another router */
                   struct sr_if* fwd_out_if = sr_get_interface(sr, matching_entry->interface);
                   memcpy(eth_hdr->ether_shost, fwd_out_if->addr, ETHER_ADDR_LEN);
-                  
-                  /* fill in other ethernet attributes */
-                  ip_hdr->ip_sum = 0;
-                  ip_hdr->ip_sum = cksum(ip_hdr, ip_hdr->ip_hl * 4);
-
+                  memcpy(eth_hdr->ether_shost, arp_entry->mac, ETHER_ADDR_LEN);
 
                   print_hdr_eth((uint8_t*) eth_hdr);
                   printf("this is the interface");
                   sr_print_if(fwd_out_if);
 
                   sr_send_packet(sr, packet, len, fwd_out_if->name);
+                  free(arp_entry);
                   return;
 
               } else {
                   /* No entry found in ARP cache, send ARP request */
                   /*    printf("TESTING: No entry found in ARP Cache\n");
                   prinf("reqeust an entry. send ARP REQUEST\n");
-\
+                  */
                   /* Cache doesnt have this entry, So request it */ 
                   printf("Coudln't find arp cache hit, handlearp\n");
                   struct sr_arpreq* req = sr_arpcache_queuereq(&sr->cache,
                                                               matching_entry->gw.s_addr,
                                                               (uint8_t*) eth_hdr,
-                                                              len + sizeof(sr_ethernet_hdr_t),
+                                                              len,
                                                               matching_entry->interface);
-                  assert(req!=NULL);
+                  assert(req != NULL);
                   /* send the ARP request packet*/
                   handle_arpreq(sr, req);
                   printf("DONE\n");
+                  return;
               }
           /* end of: if matching routing table entry is found */
           } else {
-              printf("not matching rt entry found \n");
+              printf("no matching rt entry found \n");
               send_icmp_host_unreachable(sr, packet, in_interface);
               return ;
           }
