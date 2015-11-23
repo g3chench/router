@@ -13,6 +13,45 @@
 #include "sr_icmp_handler.h"
 #include "sr_arp_handler.h"
 
+/**
+ * Sends an ethernet packet containing an ARP request.
+ */
+void send_arp_request(struct sr_instance *sr, struct sr_arpreq *req) {
+    printf("TEST: in send_arp_request\n");
+
+    int len = sizeof(sr_ethernet_hdr_t) + sizeof(sr_arp_hdr_t);
+    uint8_t *packet = malloc(len);
+    struct sr_if *out_if = sr_get_interface(sr, req->packets->iface);
+    uint8_t broadcast_addr[ETHER_ADDR_LEN] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+    
+    /* Fill in the ethernet header*/   
+    sr_ethernet_hdr_t *eth_hdr = (sr_ethernet_hdr_t *)packet;
+    memcpy(eth_hdr->ether_dhost, broadcast_addr, ETHER_ADDR_LEN);
+    memcpy(eth_hdr->ether_shost, out_if->addr, ETHER_ADDR_LEN);
+    eth_hdr->ether_type = htons(ethertype_arp);
+
+    /* Fill in the arp heder*/
+    struct sr_arp_hdr *arp_hdr = (sr_arp_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t));
+    arp_hdr->ar_hrd = htons(arp_hrd_ethernet);
+    arp_hdr->ar_pro = htons(ethertype_ip);
+    arp_hdr->ar_hln = ETHER_ADDR_LEN;
+    arp_hdr->ar_pln = 4;
+    arp_hdr->ar_op = htons(arp_op_request);
+    arp_hdr->ar_sip = out_if->addr;
+    arp_hdr->ar_tip = out_if->ip;
+    memcpy(arp_hdr->ar_sha, broadcast_addr, ETHER_ADDR_LEN);
+    memcpy(arp_hdr->ar_tha, &req->ip, ETHER_ADDR_LEN);
+
+    /*Encapsulate the ARP request into the ethernet frame*/
+    memcpy(packet + sizeof(sr_ethernet_hdr_t), arp_hdr, sizeof(sr_arp_hdr_t));
+    packet = (uint8_t *)eth_hdr;
+
+    /* send the ARP request packet*/
+    sr_send_packet(sr, packet, len, out_if->name);
+    free(packet);
+}
+
+
 /*
   This function gets called every second. For each request sent out, we keep
   checking whether we should resend an request or destroy the arp request.
@@ -48,7 +87,7 @@ void handle_arpreq(struct sr_instance *sr, struct sr_arpreq* req) {
         
         } else {
             /*  no entry found in arp cache, send ARP request */
-            handle_arp_reply(sr, req);
+            send_arp_request(sr, req);
             req->sent = now;
             req->times_sent++;
         }

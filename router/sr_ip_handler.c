@@ -13,39 +13,29 @@
 #include "sr_icmp_handler.h"
 #include "sr_arp_handler.h"
 
-struct sr_if *get_output_interface(struct sr_instance *sr, uint32_t address) {
-  struct sr_if *current_node = sr->if_list;
-  
-  while (current_node) {
-    if (address == current_node->ip) {
-      return current_node;
-    }
-    current_node = current_node->next;
-  }
-  return NULL;
-}
 
 struct sr_rt* lpm(struct sr_instance* sr, uint8_t* packet, struct sr_if* in_interface, sr_ip_hdr_t* ip_hdr) {
+    printf("TESTING: In lpm function");
     struct sr_rt *current_node = sr->routing_table;
-          struct sr_rt* matching_entry = NULL;
-          unsigned long matching_len = 0;
+    struct sr_rt* matching_entry = NULL;
+    unsigned long matching_len = 0;
 
-          while (current_node) {
-               /* perform LPM */
-              printf("Current node\n");
-              sr_print_routing_entry(current_node);
-              if (((ip_hdr->ip_dst & current_node->mask.s_addr) == (current_node->dest.s_addr & current_node->mask.s_addr))
-                        & (matching_len <= current_node->mask.s_addr)) {
-                printf("This is a match\n");
-                matching_entry = current_node;
-                matching_len = current_node->mask.s_addr;
-                break;
-              }
+    while (current_node) {
+        printf("Current node\n");
+        sr_print_routing_entry(current_node);
+        /* Perform LPM matching*/
+        if (((ip_hdr->ip_dst & current_node->mask.s_addr) == (current_node->dest.s_addr & current_node->mask.s_addr))
+                  & (matching_len <= current_node->mask.s_addr)) {
+          printf("This is a match\n");
+          matching_entry = current_node;
+          matching_len = current_node->mask.s_addr;
+          break;
+        }
 
-              /* go to the next node in the rt_table */
-              current_node = current_node->next;
-          }
-          return matching_entry;
+        /* go to the next node in the rt_table */
+        current_node = current_node->next;
+    }
+    return matching_entry;
 }
 
 
@@ -54,18 +44,15 @@ struct sr_rt* lpm(struct sr_instance* sr, uint8_t* packet, struct sr_if* in_inte
  * Null is returned otherwise.
  */
 struct sr_arpentry* search_arpcache(struct sr_instance* sr, uint8_t* packet, struct sr_rt* matching_entry) {
-
+    printf("TESTING: in search_arpcache()\n");
     printf("SEARCH FOR MAC ADDR THRU ARP CACHE ================================\n");
     struct sr_arpcache* cache = &(sr->cache);
+    
     /* search for the next hop MAC address in the cache */ 
     struct sr_arpentry* arp_entry = sr_arpcache_lookup(cache, matching_entry->gw.s_addr);
-    /* printf("sr cache first etry %i\n", (sr->cache.entries->ip));*/
-    printf("Check if this mac address exists ========================================\n");
     
     return arp_entry;
 }
-
-
 
 
 /*
@@ -85,7 +72,7 @@ void ip_handler(struct sr_instance* sr,
   /* sanity check the IP packet */
   size_t min_len = sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t);
   if (len < min_len) {
-      fprintf(stderr, "Error: Invalid IP packet\n Length of the frame is incorrect\nDropping packet...\n");
+      fprintf(stderr, "Error: Invalid IP packet\nLength of the frame is incorrect\nDropping packet...\n");
       return ;
   } 
 
@@ -205,7 +192,7 @@ void ip_handler(struct sr_instance* sr,
                   */
                   /* Cache doesnt have this entry, So request it */ 
                   printf("Coudln't find arp cache hit, handlearp\n");
-                  struct sr_arpreq* req = sr_arpcache_queuereq(&sr->cache,
+                  struct sr_arpreq* req = sr_arpcache_queuereq(&(sr->cache),
                                                               matching_entry->gw.s_addr,
                                                               (uint8_t*) eth_hdr,
                                                               len,
@@ -217,6 +204,7 @@ void ip_handler(struct sr_instance* sr,
                   return;
               }
           /* end of: if matching routing table entry is found */
+              
           } else {
               printf("no matching rt entry found \n");
               send_icmp_host_unreachable(sr, packet, in_interface);

@@ -14,82 +14,119 @@ void arp_handler(struct sr_instance* sr,
                   uint8_t * packet,
                   unsigned int len,
                   char* interface,
-                  unsigned int minLen,
                   uint16_t frame){
+
     printf("TESTING: IN ARP HANDLER\n");
-    sr_arp_hdr_t *arpHeader = (sr_arp_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t));
-    /* Add ARP Header length to minLen with Ethernet header length */
-    minLen += sizeof(sr_arp_hdr_t);
+    sr_arp_hdr_t *arp_hdr = (sr_arp_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t));
+    enum sr_arp_opcode arp_type;
+    arp_type = arp_hdr->ar_op;
 
-    /* if packet size is smaller than the total minimum length
-    of ARP Header and Ethernet Header combined, then output error*/
-    if (minLen > len){
-        fprintf(stderr, "ARP Header length is too large\n");
-    } else if (arpHeader->ar_hrd != htons(arp_hrd_ethernet)){
-        /* If ARP packet format is incorrect, then output error */
+    if (!get_output_interface(arp_hdr->ar_tip, sr->if_list)) {
+        printf("cannot find outputting interface\n");
+        fprintf(stderr, "ERROR: ARP pkt not for us\n");
+        return;
+    } 
+    printf("Here 1\n");
+
+    if (arp_hdr->ar_hrd != htons(arp_hrd_ethernet)){
         fprintf(stderr, "Invalid ARP hardware format\n");
-    } else {
-        if (ntohs(arpHeader->ar_hrd) == arp_hrd_ethernet &&
-        arpHeader->ar_hln == 0x06 &&
-        arpHeader->ar_pln == 0x04 &&
-        ntohs (arpHeader->ar_pro) == ethertype_ip){
-            struct sr_if* sr_interface = sr_get_interface(sr, interface);
-            sr_ethernet_hdr_t *etherHeader = (sr_ethernet_hdr_t *)packet;
-            struct sr_arpreq* arpReq = sr_arpcache_insert(&sr->cache, arpHeader->ar_sha, arpHeader->ar_sip);
+        return;
+    }
+    printf("Here 2\n");
 
-            switch (ntohs(arpHeader->ar_op)){
-            /* If the packet is a request */
-            case arp_op_request:
-                handle_arp_request(sr, packet, len, interface, sr_interface, arpHeader, etherHeader);
+    printf("Passed Sanity Checks\nHandlng this ARP packet...\n");
+    
+    struct sr_if* sr_interface = sr_get_interface(sr, interface);
+    sr_ethernet_hdr_t *eth_hdr = (sr_ethernet_hdr_t *)packet;
+    struct sr_arpreq* arpReq = sr_arpcache_insert(&(sr->cache), arp_hdr->ar_sha, arp_hdr->ar_sip);
+
+    switch (htons(arp_hdr->ar_op)){
+        /* If the packet is a request */
+        case arp_op_request:
+            printf("Passing to handle_arp_request\n");
+            handle_arp_request(sr, packet, len, interface, sr_interface, arp_hdr, eth_hdr);
             break;
 
-            /* If the packet is a reply */
-            case arp_op_reply:
-                handle_arp_reply(sr, arpReq);
-                break;
-            default:
-                fprintf(stderr, "Invalid Ethernet Type: %d\n", frame);
-            }
-        }
-    }
+        /* If the packet is a reply */
+        case arp_op_reply:
+            printf("Passing to handle_arp_reply\n");
+            handle_arp_reply(sr, arpReq);
+            break;
 
+        default:
+            fprintf(stderr, "Invalid Ethernet Type: %d\n", frame);
+    }
 }
 
+/**
+ * Send an ARP reply back
+ */
 void handle_arp_request(struct sr_instance* sr,
                         uint8_t * packet,
                         unsigned int len,
                         char* interface,
                         struct sr_if* sr_interface,
-                        sr_arp_hdr_t *arpHeader,
-                        sr_ethernet_hdr_t *etherHeader) {
+                        sr_arp_hdr_t *arp_hdr,
+                        sr_ethernet_hdr_t *eth_hdr) {
+    printf("Incoming arp request\n");
+    printf("TESTING: IN ARP HANDLE REQUEST\n");
 
-    printf("IN ARP HANDLE REQUEST\n");
-    if (ntohl(sr_interface->ip) == ntohl(arpHeader->ar_tip)){
-        memcpy(etherHeader->ether_dhost, etherHeader->ether_shost, ETHER_ADDR_LEN);
-        memcpy(etherHeader->ether_shost, sr_interface->addr, ETHER_ADDR_LEN);
+    /* Construct an outgoing ethernet packet containing an ARP reply packet*/
+    /* build the ethernet frame*/
+    unsigned int reply_pkt_len = sizeof(sr_ethernet_hdr_t) + sizeof(sr_arp_hdr_t);
+    uint8_t* reply_pkt = malloc(reply_pkt_len);
+    
+    sr_ethernet_hdr_t *request_eth_hdr = (sr_ethernet_hdr_t *)packet;
+    sr_ethernet_hdr_t *reply_eth_hdr = (sr_ethernet_hdr_t *)reply_pkt;
 
-        arpHeader->ar_op = htons(arp_op_reply);
-        arpHeader->ar_tip = arpHeader->ar_sip;
-        arpHeader->ar_sip = sr_interface->ip;
+    /* Fill in the ethernet reply header*/    
+    memcpy(reply_eth_hdr->ether_dhost, request_eth_hdr->ether_shost, ETHER_ADDR_LEN);
+    memcpy(reply_eth_hdr->ether_shost, sr_interface->addr, ETHER_ADDR_LEN);
+    eth_hdr->ether_type = htons(ethertype_arp);
 
-        memcpy(arpHeader->ar_tha, arpHeader->ar_sha, ETHER_ADDR_LEN);
-        memcpy(arpHeader->ar_sha, sr_interface->addr, ETHER_ADDR_LEN);
-        /* Send  packet (ethernet header included!) of length 'len'
-        * to the server to be injected onto the wire.*/
-        sr_send_packet(sr, packet, len, interface);
-    }
+    /* Fill in the ARP reply header*/
+    sr_arp_hdr_t *request_arp_hdr = ((sr_arp_hdr_t *)(reply_pkt + sizeof(sr_ethernet_hdr_t)));
+    sr_arp_hdr_t *reply_arp_hdr = ((sr_arp_hdr_t *)(request_pkt + sizeof(sr_ethernet_hdr_t)));
+
+    arp_hdr->ar_hrd = htons(arp_hrd_ethernet);
+    arp_hdr->ar_pro = htons(ethertype_ip);
+    arp_hdr->ar_hln = ETHER_ADDR_LEN;
+    arp_hdr->ar_pln = 4;
+    arp_hdr->ar_op = htons(arp_op_reply);
+    arp_hdr->ar_sip = sr_interface->addr;
+    arp_hdr->ar_tip = sr_interface->ip;
+    memcpy(reply_arp_hdr->ar_sha, request_arp_hdr->ar_sha, ETHER_ADDR_LEN);
+    memcpy(reply_arp_hdr->ar_tha, request_arp_hdr->ar_sip, ETHER_ADDR_LEN);
+
+    /* encapsulate ARP header in ethernet header*/
+    reply_pkt = reply_eth_hdr;    
+    
+    /* Send  packet (ethernet header included!) of length 'len'
+    * to the server to be injected onto the wire.*/
+    sr_send_packet(sr, reply_pkt, len, interface);
+
+    free(reply_pkt);
 }
 
 void handle_arp_reply(struct sr_instance* sr,
                     struct sr_arpreq* arpReq) {
-    printf("IN handle_arp_reply\n");
+    printf("Sending an ARP reply\n");
+    printf("TESTING: IN handle_arp_reply\n");
     if (arpReq) {
         struct sr_packet* currPkt = arpReq->packets;
         while (currPkt) {
             sr_ethernet_hdr_t *etherhdr = (sr_ethernet_hdr_t *) currPkt->buf;
-            sr_arp_hdr_t *arpHeader = (sr_arp_hdr_t *)(currPkt + sizeof(sr_ethernet_hdr_t));
-            memcpy(etherhdr->ether_dhost, arpHeader->ar_sha, ETHER_ADDR_LEN);
-            memcpy(etherhdr->ether_shost, arpHeader->ar_tha, ETHER_ADDR_LEN);
+/*            sr_arp_hdr_t *arp_hdr = (sr_arp_hdr_t *)(currPkt + sizeof(sr_ethernet_hdr_t));
+            memcpy(etherhdr->ether_dhost, arp_hdr->ar_sha, ETHER_ADDR_LEN);
+*/
+            struct sr_if *if_out = sr_get_interface(sr, currPkt->iface);
+            memcpy(etherhdr->ether_shost, if_out->addr, ETHER_ADDR_LEN);
+            memcpy(etherhdr->ether_dhost, etherhdr->ether_shost, ETHER_ADDR_LEN);
+
+            printf("ethernet source: %u\n", *etherhdr->ether_shost);
+            printf("ethernet destination: %u\n", *etherhdr->ether_dhost);
+            
+
 
             sr_send_packet(sr, currPkt->buf, currPkt->len, currPkt->iface);
             currPkt = currPkt->next;

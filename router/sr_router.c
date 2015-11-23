@@ -89,19 +89,21 @@ void sr_handlepacket(struct sr_instance* sr,
     /* If the packet size is smaller than the
      minimum Ethernet Header size, output error */
     if (minLen > len){
-        fprintf(stderr, "Packet length is too small\n");
+        fprintf(stderr, "Ethernet packet length is too small\n");
         return;
     }
 
     /* Get Ethernet's frame */
-    uint16_t frame = ethertype(packet);
-    /*uint16_t frame = ntohs(eth_hdr->ether_type);*/
+
+    sr_ethernet_hdr_t *eth_hdr = (sr_ethernet_hdr_t *)packet;
     
-    switch(frame){
+    uint16_t ethernet_type = ntohs(eth_hdr->ether_type);
+    
+    switch(ethernet_type){
         /* If it's an ARP Packet */
         case ethertype_arp:
             printf("TESTING: Type: ARP Packet\n");
-            arp_handler(sr, packet, len, interface, minLen, frame);
+            arp_handler(sr, packet, len, interface, eth_hdr);
             printf("TESTING: Out of arp_handler\n");
             break;
 

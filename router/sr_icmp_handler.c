@@ -142,15 +142,17 @@ uint8_t* gen_icmp_packet (int type, int code) {
 uint8_t* gen_eth_frame (uint8_t* packet, uint8_t *icmp_pkt, struct sr_if* interface) {
 	printf("in gen_eth_frame\n------------------\n");
 	/* Create the ethernet header*/
-	sr_ethernet_hdr_t *eth_hdr = malloc(sizeof(eth_hdr));
-
+	sr_ethernet_hdr_t *eth_hdr = (sr_ethernet_hdr_t *)packet;
 	sr_ethernet_hdr_t *old_eth_hdr = (sr_ethernet_hdr_t *)packet;
-	memcpy(eth_hdr->ether_dhost, old_eth_hdr->ether_shost, ETHER_ADDR_LEN);
-	memcpy(eth_hdr->ether_shost, old_eth_hdr->ether_dhost, ETHER_ADDR_LEN);
+
+	memcpy(eth_hdr->ether_dhost, old_eth_hdr->ether_dhost, ETHER_ADDR_LEN);
+	memcpy(eth_hdr->ether_shost, old_eth_hdr->ether_shost, ETHER_ADDR_LEN);
+	
 	eth_hdr->ether_type = htons(ethertype_ip);
 
 	/* Create the IP header*/
-	sr_ip_hdr_t *ip_hdr = malloc(sizeof(sr_ip_hdr_t));
+	sr_ip_hdr_t *ip_hdr = (sr_ip_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t));
+	
 	ip_hdr->ip_hl = ip_hdr->ip_hl * 4;
 	ip_hdr->ip_v = 4;
 	ip_hdr->ip_tos = 0;				
