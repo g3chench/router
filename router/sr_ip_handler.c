@@ -187,7 +187,7 @@ void ip_handler(struct sr_instance* sr,
 
               } else {
                   /* No entry found in ARP cache, send ARP request */
-                  /*    printf("TESTING: No entry found in ARP Cache\n");
+                  /* printf("TESTING: No entry found in ARP Cache\n");
                   prinf("reqeust an entry. send ARP REQUEST\n");
                   */
                   /* Cache doesnt have this entry, So request it */ 
