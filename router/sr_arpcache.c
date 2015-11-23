@@ -30,7 +30,7 @@ void send_arp_request(struct sr_instance *sr, struct sr_arpreq *req) {
     memcpy(eth_hdr->ether_shost, out_if->addr, ETHER_ADDR_LEN);
     eth_hdr->ether_type = htons(ethertype_arp);
 
-    /* Fill in the arp heder*/
+    /* Fill in the arp header*/
     struct sr_arp_hdr *arp_hdr = (sr_arp_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t));
     arp_hdr->ar_hrd = htons(arp_hrd_ethernet);
     arp_hdr->ar_pro = htons(ethertype_ip);

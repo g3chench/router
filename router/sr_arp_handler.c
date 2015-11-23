@@ -17,15 +17,17 @@ void arp_handler(struct sr_instance* sr,
                   uint16_t frame){
 
     printf("TESTING: IN ARP HANDLER\n");
+    struct sr_if* sr_interface = sr_get_interface(sr, interface);
+    sr_ethernet_hdr_t *eth_hdr = (sr_ethernet_hdr_t *)packet;
     sr_arp_hdr_t *arp_hdr = (sr_arp_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t));
-    enum sr_arp_opcode arp_type;
-    arp_type = arp_hdr->ar_op;
-
+    printf("HERE\n");
+    
     if (!get_output_interface(arp_hdr->ar_tip, sr->if_list)) {
         printf("cannot find outputting interface\n");
         fprintf(stderr, "ERROR: ARP pkt not for us\n");
         return;
     } 
+
     printf("Here 1\n");
 
     if (arp_hdr->ar_hrd != htons(arp_hrd_ethernet)){
@@ -36,14 +38,13 @@ void arp_handler(struct sr_instance* sr,
 
     printf("Passed Sanity Checks\nHandlng this ARP packet...\n");
     
-    struct sr_if* sr_interface = sr_get_interface(sr, interface);
-    sr_ethernet_hdr_t *eth_hdr = (sr_ethernet_hdr_t *)packet;
     struct sr_arpreq* arpReq = sr_arpcache_insert(&(sr->cache), arp_hdr->ar_sha, arp_hdr->ar_sip);
 
     switch (htons(arp_hdr->ar_op)){
         /* If the packet is a request */
         case arp_op_request:
             printf("Passing to handle_arp_request\n");
+            printf("Send an arp reply request\n");
             handle_arp_request(sr, packet, len, interface, sr_interface, arp_hdr, eth_hdr);
             break;
 
@@ -59,7 +60,7 @@ void arp_handler(struct sr_instance* sr,
 }
 
 /**
- * Send an ARP reply back
+ * Send an ARP reply back when an ARP request is made.
  */
 void handle_arp_request(struct sr_instance* sr,
                         uint8_t * packet,
@@ -86,7 +87,7 @@ void handle_arp_request(struct sr_instance* sr,
 
     /* Fill in the ARP reply header*/
     sr_arp_hdr_t *request_arp_hdr = ((sr_arp_hdr_t *)(reply_pkt + sizeof(sr_ethernet_hdr_t)));
-    sr_arp_hdr_t *reply_arp_hdr = ((sr_arp_hdr_t *)(request_pkt + sizeof(sr_ethernet_hdr_t)));
+    sr_arp_hdr_t *reply_arp_hdr = ((sr_arp_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t)));
 
     arp_hdr->ar_hrd = htons(arp_hrd_ethernet);
     arp_hdr->ar_pro = htons(ethertype_ip);
