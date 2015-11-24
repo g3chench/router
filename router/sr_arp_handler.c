@@ -87,8 +87,8 @@ void handle_arp_request(struct sr_instance* sr,
     eth_hdr->ether_type = htons(ethertype_arp);
 
     /* Fill in the ARP reply header*/
-    sr_arp_hdr_t *request_arp_hdr = ((sr_arp_hdr_t *)(reply_pkt + sizeof(sr_ethernet_hdr_t)));
-    sr_arp_hdr_t *reply_arp_hdr = ((sr_arp_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t)));
+    sr_arp_hdr_t *request_arp_hdr =((sr_arp_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t)));
+    sr_arp_hdr_t *reply_arp_hdr = malloc(sizeof(sr_arp_hdr_t));
 
     arp_hdr->ar_hrd = htons(arp_hrd_ethernet);
     arp_hdr->ar_pro = htons(ethertype_ip);
@@ -97,6 +97,7 @@ void handle_arp_request(struct sr_instance* sr,
     arp_hdr->ar_op = htons(arp_op_reply);
     arp_hdr->ar_sip = sr_interface->addr;
     arp_hdr->ar_tip = sr_interface->ip;
+
     memcpy(reply_arp_hdr->ar_sha, request_arp_hdr->ar_sha, ETHER_ADDR_LEN);
     memcpy(reply_arp_hdr->ar_tha, request_arp_hdr->ar_sip, ETHER_ADDR_LEN);
 

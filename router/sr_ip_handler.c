@@ -176,12 +176,15 @@ void ip_handler(struct sr_instance* sr,
                   memcpy(eth_hdr->ether_shost, fwd_out_if->addr, ETHER_ADDR_LEN);
                   memcpy(eth_hdr->ether_shost, arp_entry->mac, ETHER_ADDR_LEN);
 
+                  printf("AM I HERE YET?\n");
                   print_hdr_eth((uint8_t*) eth_hdr);
-                  printf("this is the interface");
+                  printf("this is the interface\n");
                   sr_print_if(fwd_out_if);
-
+                  printf("Sending packets\n");
                   sr_send_packet(sr, packet, len, fwd_out_if->name);
+                  printf("Freeing arp_entry\n");
                   free(arp_entry);
+                  printf("IP_Handler ends here dawg\n");
                   return;
 
               } else {
