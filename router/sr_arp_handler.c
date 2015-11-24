@@ -20,12 +20,12 @@ void arp_handler(struct sr_instance* sr,
     sr_ethernet_hdr_t *eth_hdr = (sr_ethernet_hdr_t *)packet;
     sr_arp_hdr_t *arp_hdr = (sr_arp_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t));
     printf("HERE\n");
-    
+
     if (!get_output_interface(arp_hdr->ar_tip, sr->if_list)) {
         printf("cannot find outputting interface\n");
         fprintf(stderr, "ERROR: ARP pkt not for us\n");
         return;
-    } 
+    }
 
     printf("Here 1\n");
 
@@ -36,7 +36,7 @@ void arp_handler(struct sr_instance* sr,
     printf("Here 2\n");
 
     printf("Passed Sanity Checks\nHandlng this ARP packet...\n");
-    
+
     struct sr_arpreq* arpReq = sr_arpcache_insert(&(sr->cache), arp_hdr->ar_sha, arp_hdr->ar_sip);
 
     switch (htons(arp_hdr->ar_op)){
@@ -54,7 +54,9 @@ void arp_handler(struct sr_instance* sr,
             break;
 
         default:
-            fprintf(stderr, "Invalid Ethernet Type: %d\n", ntohs(eth_hdr->ether_type));
+            /*fprintf(stderr, "Invalid Ethernet Type: %d\n", ntohs(eth_hdr->ether_type));*/
+            fprintf(stderr, "Invalid Ethernet Type\n");
+
     }
 }
 
@@ -75,11 +77,11 @@ void handle_arp_request(struct sr_instance* sr,
     /* build the ethernet frame*/
     unsigned int reply_pkt_len = sizeof(sr_ethernet_hdr_t) + sizeof(sr_arp_hdr_t);
     uint8_t* reply_pkt = malloc(reply_pkt_len);
-    
+
     sr_ethernet_hdr_t *request_eth_hdr = (sr_ethernet_hdr_t *)packet;
     sr_ethernet_hdr_t *reply_eth_hdr = (sr_ethernet_hdr_t *)reply_pkt;
 
-    /* Fill in the ethernet reply header*/    
+    /* Fill in the ethernet reply header*/
     memcpy(reply_eth_hdr->ether_dhost, request_eth_hdr->ether_shost, ETHER_ADDR_LEN);
     memcpy(reply_eth_hdr->ether_shost, sr_interface->addr, ETHER_ADDR_LEN);
     eth_hdr->ether_type = htons(ethertype_arp);
@@ -99,8 +101,8 @@ void handle_arp_request(struct sr_instance* sr,
     memcpy(reply_arp_hdr->ar_tha, request_arp_hdr->ar_sip, ETHER_ADDR_LEN);
 
     /* encapsulate ARP header in ethernet header*/
-    reply_pkt = (uint8_t*)reply_eth_hdr;    
-    
+    reply_pkt = (uint8_t*)reply_eth_hdr;
+
     /* Send  packet (ethernet header included!) of length 'len'
     * to the server to be injected onto the wire.*/
     sr_send_packet(sr, reply_pkt, len, interface);
@@ -125,7 +127,7 @@ void handle_arp_reply(struct sr_instance* sr,
 
             printf("ethernet source: %u\n", *etherhdr->ether_shost);
             printf("ethernet destination: %u\n", *etherhdr->ether_dhost);
-            
+
 
 
             sr_send_packet(sr, currPkt->buf, currPkt->len, currPkt->iface);
