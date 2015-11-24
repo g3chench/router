@@ -13,7 +13,6 @@
 #include "sr_icmp_handler.h"
 #include "sr_arp_handler.h"
 
-
 struct sr_rt* lpm(struct sr_instance* sr, uint8_t* packet, struct sr_if* in_interface, sr_ip_hdr_t* ip_hdr) {
     printf("TESTING: In lpm function");
     struct sr_rt *current_node = sr->routing_table;

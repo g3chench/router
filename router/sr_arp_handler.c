@@ -54,7 +54,7 @@ void arp_handler(struct sr_instance* sr,
             break;
 
         default:
-            fprintf(stderr, "Invalid Ethernet Type: %d\n", frame);
+            fprintf(stderr, "Invalid Ethernet Type: %d\n", ntohs(eth_hdr->ether_type));
     }
 }
 
