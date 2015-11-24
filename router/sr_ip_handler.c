@@ -139,12 +139,7 @@ void ip_handler(struct sr_instance* sr,
   } else {
       printf("THIS PACKET WAS NOT SENT TO ME!...\n");
       
-      if (ip_hdr->ip_ttl == 1) {                        /* TTL = 0 send ICMP echo request */
-        fprintf(stderr, "Packet's TTL is 1");
-        send_icmp_echo_request(sr, packet, in_interface);
-        return;
-
-      } else if (ip_hdr->ip_ttl < 1) {                  /* TTL = 0, expired packet*/
+      if (ip_hdr->ip_ttl <= 1) {                  /* TTL = 0, expired packet*/
         fprintf(stderr, "Packet's TTL expired");
         send_icmp_time_exceeded(sr, packet, in_interface);
         return;
