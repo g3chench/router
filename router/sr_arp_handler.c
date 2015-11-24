@@ -13,8 +13,7 @@
 void arp_handler(struct sr_instance* sr,
                   uint8_t * packet,
                   unsigned int len,
-                  char* interface,
-                  uint16_t frame){
+                  char* interface) {
 
     printf("TESTING: IN ARP HANDLER\n");
     struct sr_if* sr_interface = sr_get_interface(sr, interface);
@@ -100,7 +99,7 @@ void handle_arp_request(struct sr_instance* sr,
     memcpy(reply_arp_hdr->ar_tha, request_arp_hdr->ar_sip, ETHER_ADDR_LEN);
 
     /* encapsulate ARP header in ethernet header*/
-    reply_pkt = reply_eth_hdr;    
+    reply_pkt = (uint8_t*)reply_eth_hdr;    
     
     /* Send  packet (ethernet header included!) of length 'len'
     * to the server to be injected onto the wire.*/

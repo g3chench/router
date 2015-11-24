@@ -96,14 +96,13 @@ void sr_handlepacket(struct sr_instance* sr,
     /* Get Ethernet's frame */
 
     sr_ethernet_hdr_t *eth_hdr = (sr_ethernet_hdr_t *)packet;
-    
     uint16_t ethernet_type = ntohs(eth_hdr->ether_type);
     
     switch(ethernet_type){
         /* If it's an ARP Packet */
         case ethertype_arp:
             printf("TESTING: Type: ARP Packet\n");
-            arp_handler(sr, packet, len, interface, eth_hdr);
+            arp_handler(sr, packet, len, interface);
             printf("TESTING: Out of arp_handler\n");
             break;
 
