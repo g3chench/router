@@ -193,9 +193,9 @@ void sr_print_if(struct sr_if* iface)
     Debug("\tinet addr %s\n",inet_ntoa(ip_addr));
 } /* -- sr_print_if -- */
 
-struct sr_if *get_output_interface(struct sr_instance *sr, uint32_t address) {
-  struct sr_if *current_node = sr->if_list;
-  
+struct sr_if* get_output_interface(struct sr_if* if_list, uint32_t address) {
+  struct sr_if *current_node = if_list;
+  printf("HERE IN get_output_interface\n");
   while (current_node) {
     if (address == current_node->ip) {
       return current_node;

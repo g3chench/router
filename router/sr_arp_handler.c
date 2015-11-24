@@ -21,7 +21,7 @@ void arp_handler(struct sr_instance* sr,
     sr_arp_hdr_t *arp_hdr = (sr_arp_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t));
     printf("HERE\n");
 
-    if (!get_output_interface(arp_hdr->ar_tip, sr->if_list)) {
+    if (!get_output_interface(sr->if_list, arp_hdr->ar_tip)) {
         printf("cannot find outputting interface\n");
         fprintf(stderr, "ERROR: ARP pkt not for us\n");
         return;

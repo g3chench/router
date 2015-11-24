@@ -1,7 +1,7 @@
 #ifndef SR_IP_HANDLER_H
 #define SR_IP_HANDLER_H
 
-struct sr_if *get_output_interface(struct sr_instance *sr, uint32_t address);
+struct sr_if* get_output_interface(struct sr_if* if_list, uint32_t address);
 
 struct sr_rt* lpm(struct sr_instance* sr, uint8_t* packet, struct sr_if* in_interface, sr_ip_hdr_t* ip_hdr);
 
