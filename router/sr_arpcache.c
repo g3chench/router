@@ -37,7 +37,7 @@ void send_arp_request(struct sr_instance *sr, struct sr_arpreq *req) {
     arp_hdr->ar_hln = ETHER_ADDR_LEN;
     arp_hdr->ar_pln = 4;
     arp_hdr->ar_op = htons(arp_op_request);
-    arp_hdr->ar_sip = out_if->addr;
+    arp_hdr->ar_sip = *out_if->addr;
     arp_hdr->ar_tip = out_if->ip;
     memcpy(arp_hdr->ar_sha, broadcast_addr, ETHER_ADDR_LEN);
     memcpy(arp_hdr->ar_tha, &req->ip, ETHER_ADDR_LEN);

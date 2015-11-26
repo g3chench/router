@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include <string.h>
+#include <stdlib.h>
 
 #include "sr_if.h"
 #include "sr_rt.h"
@@ -95,11 +96,11 @@ void handle_arp_request(struct sr_instance* sr,
     arp_hdr->ar_hln = ETHER_ADDR_LEN;
     arp_hdr->ar_pln = 4;
     arp_hdr->ar_op = htons(arp_op_reply);
-    arp_hdr->ar_sip = sr_interface->addr;
+    arp_hdr->ar_sip = &sr_interface->addr;
     arp_hdr->ar_tip = sr_interface->ip;
 
-    memcpy(reply_arp_hdr->ar_sha, request_arp_hdr->ar_sha, ETHER_ADDR_LEN);
-    memcpy(reply_arp_hdr->ar_tha, request_arp_hdr->ar_sip, ETHER_ADDR_LEN);
+    memcpy(reply_arp_hdr->ar_sha, &request_arp_hdr->ar_sha, ETHER_ADDR_LEN);
+    memcpy(reply_arp_hdr->ar_tha, &request_arp_hdr->ar_sip, ETHER_ADDR_LEN);
 
     /* encapsulate ARP header in ethernet header*/
     reply_pkt = (uint8_t*)reply_eth_hdr;

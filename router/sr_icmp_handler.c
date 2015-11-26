@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include "sr_if.h"
+#include "sr_ip_handler.h"
 #include "sr_rt.h"
 #include "sr_router.h"
 #include "sr_protocol.h"
@@ -12,7 +13,6 @@
 #include "sr_icmp_handler.h"
 
 
-size_t eth_frame_size = sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_hdr_t) + ICMP_DATA_SIZE;
 /*
 const uint8_t MIN_ETH_SIZE = 64*sizeof(uint8_t);
 const uint8_t MAX_ETH_SIZE = 1500*sizeof(uint8_t);
@@ -35,7 +35,7 @@ You may want to create additional structs for ICMP messages for
 /*
  * Return an ICMP packet header given its type and code. 
  */
-uint8_t* gen_icmp_packet (int type, int code) {
+uint8_t* gen_icmp_hdr (int type, int code) {
 
 	printf("in gen icmp_pkt function===================================================");
 
@@ -124,21 +124,6 @@ uint8_t* gen_icmp_packet (int type, int code) {
 /* Return an ethernet frame that encapsulates the ICMP packet.
  * The ICMP packet is encapsulated in an IP packet then ethernet frame.
  */
-
-
-     /* REMOVE THIS COMMENT
-                Ethernet frame
-      ------------------------------------------------
-      | Ethernet hdr |       IP Packet               |
-      ------------------------------------------------
-                     ---------------------------------
-                     |  IP hdr |   IP Packet         |
-                     ---------------------------------
-                      		   -----------------------
-                      		   |ICMP hdr | ICMP DATA |
-                      		   -----------------------
-    */
-
 uint8_t* gen_eth_frame (uint8_t* packet, uint8_t *icmp_pkt, struct sr_if* interface) {
 	printf("in gen_eth_frame\n------------------\n");
 	/* Create the ethernet header*/
@@ -192,22 +177,25 @@ uint8_t* gen_eth_frame (uint8_t* packet, uint8_t *icmp_pkt, struct sr_if* interf
 	}
 	
 	printf("compute ICMP checksum\n");
-	/* compute the expected ICMP packet's checksum*/
+	/* compute the expected ICMP packet's checksum and ethernet frame size*/
+	int len = 0;
 	ip_hdr->ip_sum = 0;
 	if (icmp_type != 3) {
 		ip_hdr->ip_sum = cksum(ip_hdr + sizeof(sr_ip_hdr_t), ip_hdr->ip_len);
 /*		fprintf(stdout, "ICMP header \n");
 		print_hdrs(icmp_pkt, sizeof(sr_icmp_t3_hdr_t));
 */
+		len = sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_t3_hdr_t);
 	} else {
 		ip_hdr->ip_sum = cksum(ip_hdr + sizeof(sr_ip_hdr_t), ip_hdr->ip_len);
 /*		fprintf(stdout, "ICMP header \n");
 		print_hdrs(icmp_pkt, sizeof(sr_icmp_hdr_t));
 */
+		len = sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_hdr_t);
 	}
 	
 	/* Encapsulate the three protocol packets into one*/
-	uint8_t *new_eth_pkt = malloc(eth_frame_size);
+	uint8_t *new_eth_pkt = malloc(len);
 	uint8_t *eth_cargo = new_eth_pkt + sizeof(sr_ethernet_hdr_t);
 	uint8_t *ip_cargo = eth_cargo + sizeof(sr_ip_hdr_t);
 	
@@ -219,46 +207,59 @@ uint8_t* gen_eth_frame (uint8_t* packet, uint8_t *icmp_pkt, struct sr_if* interf
 	print_hdr_eth(new_eth_pkt);
 	print_hdr_ip(eth_cargo);
 	print_hdr_icmp(ip_cargo);*/
-	return (uint8_t*) new_eth_pkt;
+	return new_eth_pkt;
 }
 
-	
+
+
 void send_icmp_echo_reply(struct sr_instance *sr, uint8_t *packet, struct sr_if *interface) {
-	uint8_t *eth_pkt = gen_eth_frame(packet, gen_icmp_packet(0, 0), interface);
-	sr_send_packet(sr, eth_pkt, eth_frame_size, (const char* ) interface);
+	uint8_t *eth_pkt = gen_eth_frame(packet, gen_icmp_hdr(0, 0), interface);
+	int len = sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_hdr_t);
+	sr_ip_hdr_t *ip_hdr = (sr_ip_hdr_t *)(eth_pkt + sizeof(sr_ethernet_hdr_t));
+	cached_send(sr, eth_pkt, len, lpm(sr->routing_table, ip_hdr->ip_dst));
 	free(eth_pkt);
 }
 
 void send_icmp_echo_request(struct sr_instance *sr, uint8_t *packet, struct sr_if *interface) {
-	uint8_t *eth_pkt = gen_eth_frame(packet, gen_icmp_packet(8, 0), interface);
-	sr_send_packet(sr, eth_pkt, eth_frame_size, (const char* ) interface);
+	uint8_t *eth_pkt = gen_eth_frame(packet, gen_icmp_hdr(8, 0), interface);
+	int len = sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_hdr_t);
+	sr_ip_hdr_t *ip_hdr = (sr_ip_hdr_t *)(eth_pkt + sizeof(sr_ethernet_hdr_t));
+	cached_send(sr, eth_pkt, len, lpm(sr->routing_table, ip_hdr->ip_dst));
 	free(eth_pkt);
 }
 
 
 void send_icmp_net_unreachable(struct sr_instance *sr, uint8_t *packet, struct sr_if *interface) {
-	uint8_t *eth_pkt = gen_eth_frame(packet, gen_icmp_packet(3, 0), interface);
-	sr_send_packet(sr, eth_pkt, eth_frame_size, (const char* ) interface);
+	uint8_t *eth_pkt = gen_eth_frame(packet, gen_icmp_hdr(3, 0), interface);
+	int len = sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_t3_hdr_t);
+	sr_ip_hdr_t *ip_hdr = (sr_ip_hdr_t *)(eth_pkt + sizeof(sr_ethernet_hdr_t));
+	cached_send(sr, eth_pkt, len, lpm(sr->routing_table, ip_hdr->ip_dst));
 	free(eth_pkt);
 }
 
 
 void send_icmp_host_unreachable(struct sr_instance *sr, uint8_t *packet, struct sr_if *interface) {
-	uint8_t *eth_pkt = gen_eth_frame(packet, gen_icmp_packet(3, 1), interface);
-	sr_send_packet(sr, eth_pkt, eth_frame_size, (const char* ) interface);
+	uint8_t *eth_pkt = gen_eth_frame(packet, gen_icmp_hdr(3, 1), interface);
+	int len = sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_t3_hdr_t);
+	sr_ip_hdr_t *ip_hdr = (sr_ip_hdr_t *)(eth_pkt + sizeof(sr_ethernet_hdr_t));
+	cached_send(sr, eth_pkt, len, lpm(sr->routing_table, ip_hdr->ip_dst));
 	free(eth_pkt);
 }
 
 
 void send_icmp_port_unreachable(struct sr_instance *sr, uint8_t *packet, struct sr_if *interface) {
-	uint8_t *eth_pkt = gen_eth_frame(packet, gen_icmp_packet(3, 3), interface);
-	sr_send_packet(sr, eth_pkt, eth_frame_size, (const char* ) interface);
+	uint8_t *eth_pkt = gen_eth_frame(packet, gen_icmp_hdr(3, 3), interface);
+	int len = sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_t3_hdr_t);
+	sr_ip_hdr_t *ip_hdr = (sr_ip_hdr_t *)(eth_pkt + sizeof(sr_ethernet_hdr_t));
+	cached_send(sr, eth_pkt, len, lpm(sr->routing_table, ip_hdr->ip_dst));
 	free(eth_pkt);
 }
 
 
 void send_icmp_time_exceeded(struct sr_instance *sr, uint8_t *packet, struct sr_if *interface) {
-	uint8_t *eth_pkt = gen_eth_frame(packet, gen_icmp_packet(11, 0), interface);
-	sr_send_packet(sr, eth_pkt, eth_frame_size, (const char* ) interface);
+	uint8_t *eth_pkt = gen_eth_frame(packet, gen_icmp_hdr(11, 0), interface);
+	int len = sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_t3_hdr_t);
+	sr_ip_hdr_t *ip_hdr = (sr_ip_hdr_t *)(eth_pkt + sizeof(sr_ethernet_hdr_t));
+	cached_send(sr, eth_pkt, len, lpm(sr->routing_table, ip_hdr->ip_dst));
 	free(eth_pkt);
 }
