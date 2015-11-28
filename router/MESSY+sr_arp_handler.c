@@ -89,18 +89,18 @@ void handle_arp_request(struct sr_instance* sr,
 
     /* Fill in the ARP reply header*/
     sr_arp_hdr_t *request_arp_hdr =((sr_arp_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t)));
-    sr_arp_hdr_t *reply_arp_hdr = malloc(sizeof(sr_arp_hdr_t));
+    sr_arp_hdr_t *reply_arp_hdr = ((sr_arp_hdr_t *)(reply_packet + sizeof(sr_ethernet_hdr_t)));
 
     arp_hdr->ar_hrd = htons(arp_hrd_ethernet);
     arp_hdr->ar_pro = htons(ethertype_ip);
     arp_hdr->ar_hln = ETHER_ADDR_LEN;
     arp_hdr->ar_pln = 4;
     arp_hdr->ar_op = htons(arp_op_reply);
-    arp_hdr->ar_sip = sr_interface->addr;
+    arp_hdr->ar_sip = &sr_interface->addr;
     arp_hdr->ar_tip = sr_interface->ip;
 
-    memcpy(reply_arp_hdr->ar_sha, request_arp_hdr->ar_sha, ETHER_ADDR_LEN);
-    memcpy(reply_arp_hdr->ar_tha, request_arp_hdr->ar_sip, ETHER_ADDR_LEN);
+    memcpy(reply_arp_hdr->ar_sha, &request_arp_hdr->ar_sha, ETHER_ADDR_LEN);
+    memcpy(reply_arp_hdr->ar_tha, &request_arp_hdr->ar_sip, ETHER_ADDR_LEN);
 
     /* encapsulate ARP header in ethernet header*/
     reply_pkt = (uint8_t*)reply_eth_hdr;
@@ -126,7 +126,7 @@ void handle_arp_reply(struct sr_instance* sr,
             struct sr_if *if_out = sr_get_interface(sr, currPkt->iface);
             memcpy(etherhdr->ether_shost, if_out->addr, ETHER_ADDR_LEN);
             memcpy(etherhdr->ether_dhost, etherhdr->ether_shost, ETHER_ADDR_LEN);
-
+            etherhdr->ether_type = htons(ethertype_arp);
             printf("ethernet source: %u\n", *etherhdr->ether_shost);
             printf("ethernet destination: %u\n", *etherhdr->ether_dhost);
 

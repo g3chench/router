@@ -13,73 +13,8 @@
 #include "sr_icmp_handler.h"
 #include "sr_arp_handler.h"
 
-/** dest_ip = ip_hdr->ip_dst*/
-struct sr_rt* lpm(struct sr_rt* routing_table, uint32_t ip_addr) {
-    printf("TESTING: In lpm function");
-    struct sr_rt *current_node = routing_table;
-    struct sr_rt* matching_entry = NULL;
-    unsigned long matching_len = 0;
-    while (current_node) {
-        printf("Current node\n");
-        sr_print_routing_entry(current_node);
-        /* Perform LPM matching*/
-        if (((ip_addr & current_node->mask.s_addr) == (current_node->dest.s_addr & current_node->mask.s_addr))
-                  & (matching_len <= current_node->mask.s_addr)) {
-          printf("This is a match\n");
-          matching_entry = current_node;
-          matching_len = current_node->mask.s_addr;
-          break;
-        }
 
-        /* go to the next node in the rt_table */
-        current_node = current_node->next;
-    }
-    return matching_entry;
-}
   
-/**
- * Search the ARP cache for an entry with the correct MAC address and outgoing
- * interface to forward a given packet through. 
- */
-void cached_send(struct sr_instance* sr, uint8_t* packet, int len, struct sr_rt* rt_entry) {
-  struct sr_arpentry* arp_entry = sr_arpcache_lookup(&(sr->cache), rt_entry->gw.s_addr);
-  /* this is ethernet frame containing he packet*/
-  sr_ethernet_hdr_t *eth_hdr = (sr_ethernet_hdr_t*) (packet);
-
-  /* found a hit in the ARP cache*/
-  if (arp_entry) {
-      printf("FOUND AN ARPCACHE HIT!\n");
-      /* Build the outgoing ethernet frame to forward to another router */
-      struct sr_if* fwd_out_if = sr_get_interface(sr, rt_entry->interface);
-      memcpy(eth_hdr->ether_shost, fwd_out_if->addr, ETHER_ADDR_LEN);
-      memcpy(eth_hdr->ether_shost, arp_entry->mac, ETHER_ADDR_LEN);
-      print_hdr_eth((uint8_t*) eth_hdr);
-      printf("this is the interface\n");
-      sr_print_if(fwd_out_if);
-      printf("Sending packets\n");
-      sr_send_packet(sr, packet, len, fwd_out_if->name);
-      printf("Freeing arp_entry\n");
-      free(arp_entry);
-      printf("IP_Handler ends here dawg\n");
-
-  } else {
-      /* No entry found in ARP cache, send ARP request */
-      /* printf("TESTING: No entry found in ARP Cache\n");
-      prinf("reqeust an entry. send ARP REQUEST\n");
-      */
-      /* Cache doesnt have this entry, So request it */ 
-      printf("Coudln't find arp cache hit, handlearp\n");
-      struct sr_arpreq* req = sr_arpcache_queuereq(&(sr->cache),
-                                                  rt_entry->gw.s_addr,
-                                                  (uint8_t*) eth_hdr,
-                                                  len,
-                                                  rt_entry->interface);
-      assert(req != NULL);
-      /* send the ARP request packet*/
-      handle_arpreq(sr, req);
-  }
-}
-
 /*
  * sr_router must check if it's an IP packet
  * then call this function
@@ -132,6 +67,7 @@ void ip_handler(struct sr_instance* sr,
           
           if (icmp_hdr->icmp_code == 0 && icmp_hdr->icmp_type == 8) {
             printf("got an ECHO REQUEST\n");
+            
 
             /* sanity check the ICMP packet*/
             uint16_t icmp_expected_sum = icmp_hdr->icmp_sum;
@@ -141,7 +77,7 @@ void ip_handler(struct sr_instance* sr,
             
             if (icmp_expected_sum == icmp_actual_sum) {
               icmp_hdr->icmp_sum = icmp_expected_sum;
-              send_icmp_echo_reply(sr, packet, in_interface);  
+              send_icmp_echo_reply(sr, packet, 0, in_interface);  
             } else {
               fprintf(stderr, "Error: Invalid ICMP echo request.\n Checksum does not match...\n");
             }
@@ -150,11 +86,11 @@ void ip_handler(struct sr_instance* sr,
         } /* end of icmp case*/
         case ip_protocol_tcp: {
           printf("This IP packet contains a TCP packet\n");
-          send_icmp_port_unreachable(sr, packet, in_interface);
+          send_icmp_port_unreachable(sr, packet, 0, in_interface);
         }
         case ip_protocol_udp: {
           printf("This IP packet contains a UDP packet\n");
-          send_icmp_port_unreachable(sr, packet, in_interface);
+          send_icmp_port_unreachable(sr, packet, 0, in_interface);
         }
         default: {
           printf("Error: this IP packet uses an unrecognized protocol.\nDropping packet...\n");
@@ -167,7 +103,7 @@ void ip_handler(struct sr_instance* sr,
       
       if (ip_hdr->ip_ttl <= 1) {                  /* TTL = 0, expired packet*/
         fprintf(stderr, "Packet's TTL expired");
-        send_icmp_time_exceeded(sr, packet, in_interface);
+        send_icmp_time_exceeded(sr, packet, 0, in_interface);
         return;
 
       } else {
@@ -179,7 +115,7 @@ void ip_handler(struct sr_instance* sr,
           ip_hdr->ip_ttl--;
           if (ip_hdr->ip_ttl == 0) {
             printf("packet timed out! TTL = 0\n");
-            send_icmp_time_exceeded(sr, packet, in_interface);
+            send_icmp_time_exceeded(sr, packet, 0, in_interface);
           }
 
           ip_hdr->ip_sum = 0;
@@ -197,7 +133,7 @@ void ip_handler(struct sr_instance* sr,
               
           } else {
               printf("no matching rt entry found \n");
-              send_icmp_host_unreachable(sr, packet, in_interface);
+              send_icmp_host_unreachable(sr, packet, 0, in_interface);
               return ;
           }
 

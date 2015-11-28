@@ -80,7 +80,7 @@ void handle_arpreq(struct sr_instance *sr, struct sr_arpreq* req) {
             /* Send icmp host unreachable to source addr of all pkts waiting on this request */
             while (current_packet) {
                 struct sr_packet* ip_pkt = (struct sr_packet *)(current_packet->buf + sizeof(sr_ethernet_hdr_t));
-                send_icmp_host_unreachable(sr, (uint8_t*)ip_pkt, sr_get_interface(sr, current_packet->iface));
+                send_icmp_host_unreachable(sr, (uint8_t*)ip_pkt, 0, sr_get_interface(sr, current_packet->iface));
                 current_packet = current_packet->next;
             }
             sr_arpreq_destroy(&sr->cache, req);
