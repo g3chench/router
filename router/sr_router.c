@@ -88,7 +88,7 @@ void sr_handlepacket(struct sr_instance* sr,
     printf("*** -> Provided packet of min length %d\n",minLen);
     /* If the packet size is smaller than the
      minimum Ethernet Header size, output error */
-    if (minLen > len){
+    if (minLen > len) {
         fprintf(stderr, "Ethernet packet length is too small\n");
         return;
     }
@@ -116,8 +116,8 @@ void sr_handlepacket(struct sr_instance* sr,
         /* If it's neither ARP nor IP Packet */
         default:
             fprintf(stderr, "Unrecognized Ethernet Type\n");
-            break;
+            
     }
 
-
-}/* end sr_ForwardPacket */
+    return;
+} /* end sr_ForwardPacket */

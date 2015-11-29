@@ -24,13 +24,13 @@ void ip_handler(struct sr_instance* sr,
         unsigned int len, 
         char *interface) {
   printf("TESTING: In ip_handler function..\n");
-  struct sr_if* in_interface = (struct sr_if*) interface;
- 
-  /* store the ip packet from the ethernet frame */
+  struct sr_if* if_in = (struct sr_if*) interface;
   sr_ip_hdr_t *ip_hdr = (sr_ip_hdr_t *) (packet + sizeof(sr_ethernet_hdr_t));
-
-  /* sanity check the IP packet */
+  
+  /* sanity check the IP packet -------------------------------------------------------------*/
+  /* Check that packet length is correct*/
   size_t min_len = sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t);
+
   if (len < min_len) {
       fprintf(stderr, "Error: Invalid IP packet\nLength of the frame is incorrect\nDropping packet...\n");
       return ;
@@ -39,7 +39,6 @@ void ip_handler(struct sr_instance* sr,
   /* calculate the checksum*/
   uint16_t expected_sum = ip_hdr->ip_sum;
   ip_hdr->ip_sum = 0;
-  int ip_hl =ip_hdr->ip_hl * 4;
   uint16_t actual_sum = 0; 
   actual_sum = cksum(ip_hdr, ip_hdr->ip_hl * 4);
  
@@ -50,60 +49,54 @@ void ip_handler(struct sr_instance* sr,
       return ;
   }
   ip_hdr->ip_sum = expected_sum;
+  /* end of sanity checking ----------------------------------------------------------------*/
   
-  /* else this IP packet is valid: */
+  /* Send the packet to the next hop...*/
   /* Check that the ip packet is being sent to this host, sr_router */
   struct sr_if *out_interface = get_output_interface(sr->if_list, ip_hdr->ip_dst);
 
-  /* PACKET SENT TO ME */
-  if (out_interface != NULL) {
-      printf("This IP packet was sent to me!\n");
+  if (out_interface) {
+      printf("THIS IP PACKET WAS SENT TO ME ERMAHGERD-----------\n");
       uint8_t ip_protocol = ip_hdr->ip_p;
 
-      switch (ip_protocol) {
-        case ip_protocol_icmp: {
-          printf("This IP packet contains an ICMP packet.\n");
-          sr_icmp_hdr_t* icmp_hdr = (sr_icmp_hdr_t *) (packet + sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t));
-          
-          if (icmp_hdr->icmp_code == 0 && icmp_hdr->icmp_type == 8) {
-            printf("got an ECHO REQUEST\n");
-            
+      if (ip_protocol === ip_protocol_icmp) {    
+        printf("This IP packet contains an ICMP packet.\n");
+        sr_icmp_hdr_t* icmp_hdr = (sr_icmp_hdr_t *) (packet + sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t));
+        
+        if (icmp_hdr->icmp_code == 0 && icmp_hdr->icmp_type == 8) {
+          printf("got an ECHO REQUEST\n");
 
-            /* sanity check the ICMP packet*/
-            uint16_t icmp_expected_sum = icmp_hdr->icmp_sum;
-            icmp_hdr->icmp_sum = 0;
-            uint16_t icmp_actual_sum = 0;
-            icmp_actual_sum = cksum(icmp_hdr, ntohs(ip_hdr->ip_len) - ip_hl);
-            
-            if (icmp_expected_sum == icmp_actual_sum) {
-              icmp_hdr->icmp_sum = icmp_expected_sum;
-              send_icmp_echo_reply(sr, packet, 0, in_interface);  
-            } else {
-              fprintf(stderr, "Error: Invalid ICMP echo request.\n Checksum does not match...\n");
-            }
-            
-          } /* End of icmp packet checksum matching*/
-        } /* end of icmp case*/
-        case ip_protocol_tcp: {
+          /* sanity check the ICMP packet*/
+          uint16_t icmp_expected_sum = icmp_hdr->icmp_sum;
+          icmp_hdr->icmp_sum = 0;
+          uint16_t icmp_actual_sum = 0;
+          icmp_actual_sum = cksum(icmp_hdr, ntohs(ip_hdr->ip_len) - ip_hl);
+          
+          if (icmp_expected_sum == icmp_actual_sum) {
+            icmp_hdr->icmp_sum = icmp_expected_sum;
+            send_icmp_echo_reply(sr, packet, 0, if_in);  
+          } else {
+            fprintf(stderr, "Error: Invalid ICMP echo request.\n Checksum does not match...\n");
+          }
+        } /* End of icmp packet checksum matching*/
+      
+
+      } else if (ip_protocol == ip_protocol_tcp  || (ip_protocol == ip_protocol_udp)) {
           printf("This IP packet contains a TCP packet\n");
-          send_icmp_port_unreachable(sr, packet, 0, in_interface);
-        }
-        case ip_protocol_udp: {
-          printf("This IP packet contains a UDP packet\n");
-          send_icmp_port_unreachable(sr, packet, 0, in_interface);
-        }
-        default: {
-          printf("Error: this IP packet uses an unrecognized protocol.\nDropping packet...\n");
-        }
+          send_icmp_port_unreachable(sr, packet, 0, if_in);
+      
+      } else {
+        printf("Error: this IP packet uses an unrecognized protocol.\nDropping packet...\n");
       }
 
-  /* PACKET NOT SENT TO ME */
+
+
   } else {
-      printf("THIS PACKET WAS NOT SENT TO ME!...\n");
+      printf("DAMN. THIS PACKET WASNT SENT TO ME!...FORWARD IT!--------\n");
       
       if (ip_hdr->ip_ttl <= 1) {                  /* TTL = 0, expired packet*/
         fprintf(stderr, "Packet's TTL expired");
-        send_icmp_time_exceeded(sr, packet, 0, in_interface);
+        send_icmp_time_exceeded(sr, packet, 0, if_in);
         return;
 
       } else {
@@ -115,7 +108,7 @@ void ip_handler(struct sr_instance* sr,
           ip_hdr->ip_ttl--;
           if (ip_hdr->ip_ttl == 0) {
             printf("packet timed out! TTL = 0\n");
-            send_icmp_time_exceeded(sr, packet, 0, in_interface);
+            send_icmp_time_exceeded(sr, packet, 0, if_in);
           }
 
           ip_hdr->ip_sum = 0;
@@ -133,12 +126,8 @@ void ip_handler(struct sr_instance* sr,
               
           } else {
               printf("no matching rt entry found \n");
-              send_icmp_host_unreachable(sr, packet, 0, in_interface);
-              return ;
+              send_icmp_host_unreachable(sr, packet, 0, if_in);
           }
-
       }
   }
-
-  return;
 } /* end of ip_handler function */
