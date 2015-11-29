@@ -114,7 +114,7 @@ void handle_arp_reply(struct sr_instance* sr, uint8_t* packet, struct sr_arpreq*
 
     struct sr_packet* curr_pkt = req_entry->packets;
     while (curr_pkt) {
-        uint8_t *frame = current_packet->buf;
+        uint8_t *frame = curr_pkt->buf;
         sr_ethernet_hdr_t *frame_eth_hdr = (sr_ethernet_hdr_t *) frame;
         
         sr_ethernet_hdr_t *etherhdr = (sr_ethernet_hdr_t *) curr_pkt->buf;
