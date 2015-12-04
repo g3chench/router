@@ -8,13 +8,11 @@
  * This file contains all the functions that interact directly
  * with the routing table, as well as the main entry method
  * for routing.
+ *
  **********************************************************************/
 
 #include <stdio.h>
 #include <assert.h>
-#include <string.h>
-#include <stdlib.h>
-#include <limits.h>
 
 
 #include "sr_if.h"
@@ -23,8 +21,6 @@
 #include "sr_protocol.h"
 #include "sr_arpcache.h"
 #include "sr_utils.h"
-#include "sr_ip_handler.h"
-#include "sr_arp_handler.h"
 
 /*---------------------------------------------------------------------
  * Method: sr_init(void)
@@ -49,7 +45,7 @@ void sr_init(struct sr_instance* sr)
     pthread_t thread;
 
     pthread_create(&thread, &(sr->attr), sr_arpcache_timeout, sr);
-
+    
     /* Add initialization code here! */
 
 } /* -- sr_init -- */
@@ -75,49 +71,14 @@ void sr_handlepacket(struct sr_instance* sr,
         unsigned int len,
         char* interface/* lent */)
 {
-      /* REQUIRES */
-    assert(sr);
-    assert(packet);
-    assert(interface);
+  /* REQUIRES */
+  assert(sr);
+  assert(packet);
+  assert(interface);
 
-    printf("*** -> Received packet of length %d\n",len);
+  printf("*** -> Received packet of length %d \n",len);
 
-    /* fill in code here */
-    /* Get the minimum size of Ethernet Header */
-    unsigned int minLen = sizeof(sr_ethernet_hdr_t);
-    printf("*** -> Provided packet of min length %d\n",minLen);
-    /* If the packet size is smaller than the
-     minimum Ethernet Header size, output error */
-    if (minLen > len) {
-        fprintf(stderr, "Ethernet packet length is too small\n");
-        return;
-    }
+  /* fill in code here */
 
-    /* Get Ethernet's frame */
+}/* end sr_ForwardPacket */
 
-    sr_ethernet_hdr_t *eth_hdr = (sr_ethernet_hdr_t *)packet;
-    uint16_t ethernet_type = ntohs(eth_hdr->ether_type);
-    
-    switch(ethernet_type){
-        /* If it's an ARP Packet */
-        case ethertype_arp:
-            printf("TESTING: Type: ARP Packet\n");
-            arp_handler(sr, packet, len, interface);
-            printf("TESTING: Out of arp_handler\n");
-            break;
-
-        /* If it's an IP Packet */
-        case ethertype_ip:
-            printf("TESTING: Type:  IP Packet\n");
-            ip_handler(sr, packet, len, interface);
-            printf("TESTING: out of ip_handler\n");
-            break;
-
-        /* If it's neither ARP nor IP Packet */
-        default:
-            fprintf(stderr, "Unrecognized Ethernet Type\n");
-            
-    }
-
-    return;
-} /* end sr_ForwardPacket */

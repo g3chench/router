@@ -62,13 +62,12 @@ class SRServerListener(EventMixin):
       client.send(message)
 
   def _handle_SRPacketIn(self, event):
-    #log.debug("SRServerListener catch SRPacketIn event, port=%d, pkt=%r" % (event.port, event.pkt))
+    log.debug("SRServerListener catch SRPacketIn event, port=%d, pkt=%r" % (event.port, event.pkt))
     try:
         intfname = self.port_to_intfname[event.port]
     except KeyError:
         log.debug("Couldn't find interface for portnumber %s" % event.port)
         return
-    print "srpacketin, packet=%s" % ethernet(event.pkt)
     self.broadcast(VNSPacket(intfname, event.pkt))
 
   def _handle_RouterInfo(self, event):
@@ -150,8 +149,7 @@ class SRServerListener(EventMixin):
     except KeyError:
       log.debug('packet-out through wrong port number %s' % out_port)
       return
-    log.debug("packet-out %s: %r" % (out_intf, pkt))
-    #log.debug("packet-out %s: " % ethernet(raw=pkt))
+    log.info("packet-out %s: %r" % (out_intf, pkt))
     log.debug('SRServerHandler raise packet out event')
     core.cs144_srhandler.raiseEvent(SRPacketOut(pkt, out_port))
 

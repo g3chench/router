@@ -45,7 +45,7 @@ struct sr_instance
 {
     int  sockfd;   /* socket to server */
     char user[32]; /* user name */
-    char host[32]; /* host name */
+    char host[32]; /* host name */ 
     char template[30]; /* template name if any */
     unsigned short topo_id;
     struct sockaddr_in sr_addr; /* address to server */
@@ -60,18 +60,18 @@ struct sr_instance
 int sr_verify_routing_table(struct sr_instance* sr);
 
 /* -- sr_vns_comm.c -- */
-int sr_send_packet(struct sr_instance* sr, uint8_t* buf, unsigned int len, const char* iface);
-int sr_connect_to_server(struct sr_instance* sr,unsigned short port, char* server);
-int sr_read_from_server(struct sr_instance* sr);
+int sr_send_packet(struct sr_instance* , uint8_t* , unsigned int , const char*);
+int sr_connect_to_server(struct sr_instance* ,unsigned short , char* );
+int sr_read_from_server(struct sr_instance* );
 
 /* -- sr_router.c -- */
 void sr_init(struct sr_instance* );
-void sr_handlepacket(struct sr_instance* sr, uint8_t* packet, unsigned int len, char* interface);
+void sr_handlepacket(struct sr_instance* , uint8_t * , unsigned int , char* );
 
 /* -- sr_if.c -- */
-void sr_add_interface(struct sr_instance* sr, const char* name);
-void sr_set_ether_ip(struct sr_instance* sr, uint32_t ip_nbo);
-void sr_set_ether_addr(struct sr_instance* sr, const unsigned char* addr);
-void sr_print_if_list(struct sr_instance* sr);
+void sr_add_interface(struct sr_instance* , const char* );
+void sr_set_ether_ip(struct sr_instance* , uint32_t );
+void sr_set_ether_addr(struct sr_instance* , const unsigned char* );
+void sr_print_if_list(struct sr_instance* );
 
 #endif /* SR_ROUTER_H */

@@ -49,7 +49,7 @@ RTABLE = []
 ROUTER_IP={}
 
 #Topology is fixed 
-#sw0-eth1:server1-eth0 sw0-eth2:server2-eth0 sw0-eth3:client
+#sw0-eth2:server1-eth0 sw0-eth2:server2-eth0 sw0-eth1:client
 
 class RouterInfo(Event):
   '''Event to raise upon the information about an openflow router is ready'''
@@ -111,6 +111,46 @@ class SRPacketIn(Event):
     self.pkt = packet
     self.port = port
 
+# Credits to:
+# https://github.com/noxrepo/pox/blob/master/pox/nom_l2_switch_controller/learning_switch.py
+class LearningSwitch (EventMixin):
+  def __init__(self, connection, transparent):
+    self.connection = connection
+    self.transparent = transparent
+    self.mac_to_port = {}
+    self.listenTo(connection)
+
+  def _handle_PacketIn(self, event):
+    def flood():
+      msg = of.ofp_packet_out()
+      msg.actions.append(of.ofp_action_output(port = of.OFPP_FLOOD))
+      msg.buffer_id = event.ofp.buffer_id
+      msg.in_port = event.port
+      event.connection.send(msg)
+
+    packet = event.parse()
+    self.mac_to_port[packet.src] = event.port
+    if packet.dst.isMulticast():
+      flood()
+    else:
+      if packet.dst not in self.mac_to_port:
+        log.debug("port for %s unknown -- flooding" % (packet.dst,))
+        flood()
+      else:
+        port = self.mac_to_port[packet.dst]
+        log.debug("installing flow for %s.%i -> %s.%i" %
+                  (packet.src, event.port, packet.dst, port))
+        msg = of.ofp_flow_mod()
+        #msg.match = of.ofp_match.from_packet(packet)
+        msg.match = of.ofp_match(in_port=event.port,
+                                 dl_dst=EthAddr(packet.dst))
+        msg.idle_timeout = 10
+        msg.hard_timeout = 30
+        msg.actions.append(of.ofp_action_output(port=port))
+        msg.buffer_id = event.ofp.buffer_id
+        event.connection.send(msg)
+    return
+
 class cs144_ofhandler (EventMixin):
   """
   Waits for OpenFlow switches to connect and makes them learning switches.
@@ -124,7 +164,16 @@ class cs144_ofhandler (EventMixin):
 
   def _handle_ConnectionUp (self, event):
     log.debug("Connection %s" % (event.connection,))
-    OFHandler(event.connection, self.transparent)
+    if( event.dpid == 1):
+      # If the packet is from SR switch
+      #msg = of.ofp_flow_mod()
+      #msg.actions.append(of.ofp_action_output(port = of.OFPP_FLOOD))
+      #event.connection.send(msg)
+      #log.info("Hubifying %s", dpidToStr(event.dpid))
+      log.info("Creating learning switch %s" % dpidToStr(event.dpid))
+      LearningSwitch(event.connection, self.transparent)
+    else:
+      OFHandler(event.connection, self.transparent)
 
 
 
@@ -142,20 +191,18 @@ def get_ip_setting():
     #print name, ip
     IP_SETTING[name] = ip
 
-  RTABLE.append( ('%s' % IP_SETTING['client'], '%s' % IP_SETTING['client'], '255.255.255.255', 'eth3') )
-  RTABLE.append( ('%s' % IP_SETTING['server1'], '%s' % IP_SETTING['server1'], '255.255.255.255', 'eth1') )
+  RTABLE.append( ('%s' % IP_SETTING['client'], '%s' % IP_SETTING['client'], '255.255.255.255', 'eth1') )
+  RTABLE.append( ('%s' % IP_SETTING['server1'], '%s' % IP_SETTING['server1'], '255.255.255.255', 'eth2') )
   RTABLE.append( ('%s' % IP_SETTING['server2'], '%s' % IP_SETTING['server2'], '255.255.255.255', 'eth2') )
 
-
+# We don't want to flood immediately when a switch connects.
   ROUTER_IP['eth1'] = '%s' % IP_SETTING['sw0-eth1']
   ROUTER_IP['eth2'] = '%s' % IP_SETTING['sw0-eth2']
-  ROUTER_IP['eth3'] = '%s' % IP_SETTING['sw0-eth3']
   return 0
-
 
 def launch (transparent=False):
   """
-  Starts an Simple Router Topology
+  Starts an NAT Topology
   """    
   core.registerNew(cs144_ofhandler, str_to_bool(transparent))
   
