@@ -1,22 +1,15 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include "sr_arpcache.h"
-#include "sr_router.h"
-#include "sr_if.h"
 #include "sr_protocol.h"
 #include "sr_utils.h"
-#include "sr_rt.h"
 
-/* len: is in bytes */
+
 uint16_t cksum (const void *_data, int len) {
   const uint8_t *data = _data;
   uint32_t sum;
 
   for (sum = 0;len >= 2; data += 2, len -= 2)
-    /* connect first byte (8 bits) with second byte, 
-     * need to shift over first byte first
-     */
     sum += data[0] << 8 | data[1];
   if (len > 0)
     sum += data[0] << 8;
@@ -25,6 +18,7 @@ uint16_t cksum (const void *_data, int len) {
   sum = htons (~sum);
   return sum ? sum : 0xffff;
 }
+
 
 uint16_t ethertype(uint8_t *buf) {
   sr_ethernet_hdr_t *ehdr = (sr_ethernet_hdr_t *)buf;
@@ -189,40 +183,3 @@ void print_hdrs(uint8_t *buf, uint32_t length) {
   }
 }
 
-
-void lookup_and_send(struct sr_instance* sr, uint8_t* packet, int packet_len, struct sr_rt* lpm) {
-
-  sr_ethernet_hdr_t *eth_hdr = (sr_ethernet_hdr_t *)packet;
-
-  struct sr_arpentry *arpentry = sr_arpcache_lookup(&(sr->cache), lpm->gw.s_addr);
-
-  /* cache hit; grab MAC address (replaces old destination in ethernet header) and send the packet */
-  if (arpentry) {
-    struct sr_if* out_if = sr_get_interface(sr, lpm->interface);
-    memcpy(eth_hdr->ether_dhost, arpentry->mac, ETHER_ADDR_LEN);
-    memcpy(eth_hdr->ether_shost, out_if->addr, ETHER_ADDR_LEN);
-    printf("DEBUG: SEND PACKET (2).\n");
-    /*print_hdrs(packet, packet_len);*/
-    sr_send_packet(sr, packet, packet_len, lpm->interface);
-    free(arpentry);
-  }
-  /* cache miss; need an ARP request to grab MAC address */
-  else {
-    struct sr_arpreq *arpreq = sr_arpcache_queuereq(&(sr->cache), lpm->gw.s_addr, packet, packet_len, lpm->interface);
-    handle_arpreq(sr, arpreq);
-  }
-}
-
-
-struct sr_if* sr_get_if_from_ip (uint32_t ip, struct sr_if* if_list) {
-  struct sr_if *interface = if_list;
-
-  while (interface) {
-    if (ip == interface->ip) {
-      return interface;
-    }
-    interface = interface->next;
-  }
-
-  return NULL;
-}

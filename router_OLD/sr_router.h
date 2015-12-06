@@ -13,13 +13,8 @@
 #include <sys/time.h>
 #include <stdio.h>
 
-#include "sr_rt.h"
 #include "sr_protocol.h"
-#include "sr_utils.h"
-#include "sr_icmp.h"
 #include "sr_arpcache.h"
-#include "sr_ip.h"
-
 
 /* we dont like this debug , but what to do for varargs ? */
 #ifdef _DEBUG_

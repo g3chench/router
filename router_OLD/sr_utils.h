@@ -28,8 +28,6 @@
 #ifndef SR_UTILS_H
 #define SR_UTILS_H
 
-#define INIT_TTL 255
-
 uint16_t cksum(const void *_data, int len);
 
 uint16_t ethertype(uint8_t *buf);
@@ -46,9 +44,5 @@ void print_hdr_arp(uint8_t *buf);
 
 /* prints all headers, starting from eth */
 void print_hdrs(uint8_t *buf, uint32_t length);
-
-void lookup_and_send(struct sr_instance* sr, uint8_t* packet, int packet_len, struct sr_rt* lpm);
-
-struct sr_if* sr_get_if_from_ip (uint32_t ip, struct sr_if* if_list);
 
 #endif /* -- SR_UTILS_H -- */

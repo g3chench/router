@@ -70,7 +70,6 @@
 #include <time.h>
 #include <pthread.h>
 #include "sr_if.h"
-#include "sr_icmp.h"
 
 #define SR_ARPCACHE_SZ    100  
 #define SR_ARPCACHE_TO    15.0
@@ -106,33 +105,6 @@ struct sr_arpcache {
     pthread_mutex_t lock;
     pthread_mutexattr_t attr;
 };
-
-void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req);
-
-/*
- * Pass in the ARP Header to be populated
- * with it's corresponding params
- */
-void populate_arp_hdr(sr_arp_hdr_t *,
-                      unsigned short, /* format of hardware address   */
-                      unsigned short, /* format of protocol address   */
-                      unsigned char,  /* length of hardware address   */
-                      unsigned char,  /* length of protocol address   */
-                      unsigned short, /* ARP opcode (command)         */
-                      unsigned char*,  /* sender hardware address      */
-                      uint32_t,       /* sender IP address            */
-                      unsigned char*,  /* target hardware address      */
-                      uint32_t);      /* target IP address            */
-/*
- * Contains Logic to Handle ARP Request
- * Create New Ethernet Header
- * Create New ARP Header
- * Sends the packet back to source
- */
-void respond_to_arpreq (struct sr_instance* sr,
-                         uint8_t * req_packet,
-                         unsigned int len,
-                         struct sr_if* inf);
 
 /* Checks if an IP->MAC mapping is in the cache. IP is in network byte order. 
    You must free the returned structure if it is not NULL. */
@@ -174,5 +146,9 @@ void sr_arpcache_dump(struct sr_arpcache *cache);
 int   sr_arpcache_init(struct sr_arpcache *cache);
 int   sr_arpcache_destroy(struct sr_arpcache *cache);
 void *sr_arpcache_timeout(void *cache_ptr);
+
+
+void sr_arpcache_sweepreqs(struct sr_instance *sr);
+void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req);
 
 #endif
