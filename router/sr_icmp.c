@@ -6,6 +6,7 @@
 #include "sr_if.h"
 #include "sr_protocol.h"
 #include "sr_router.h"
+#include "sr_ip.h"
 #include "sr_icmp.h"
 
 /* 
@@ -44,7 +45,7 @@ void populate_icmp_hdr(int type, uint8_t *buf, uint8_t *old_packet){
         icmp_hdr->icmp_type = 11;
         icmp_hdr->icmp_code = 0;
       default: 
-        fprintf("ERROR: The inputted ICMP type is invalid. \n");  
+        fprintf(stderr, "ERROR: The inputted ICMP type is invalid. \n");  
     }
 
     /* set the rest of the header's variables*/
@@ -130,8 +131,8 @@ void handle_ICMP (struct sr_instance* sr, int type, uint8_t* old_packet, int old
     /*sr_ethernet_hdr_t *eth_hdr = (sr_ethernet_hdr_t *)new_packet;
     eth_hdr->ether_type = htons(ethertype_ip);*/
 
-    sr_ip_hdr_t* new_ip_hdr = new_packet + sizeof(sr_ethernet_hdr_t);
-    populate_ip_hdr(new_ip_hdr, old_len, old_ip_hdr->ip_p, old_ip_hdr->dst, old_ip_hdr->ip_src);
+    sr_ip_hdr_t* new_ip_hdr = (sr_ip_hdr_t *)(new_packet + sizeof(sr_ethernet_hdr_t));
+    populate_ip_hdr(new_ip_hdr, old_len, old_ip_hdr->ip_p, old_ip_hdr->ip_dst, old_ip_hdr->ip_src);
     populate_icmp_hdr(type, old_packet, old_packet);
 
     lookup_and_send(sr, old_packet, old_len, matching_lpm_entry);
@@ -145,7 +146,7 @@ void handle_ICMP (struct sr_instance* sr, int type, uint8_t* old_packet, int old
     eth_hdr->ether_type = htons(ethertype_ip);
     
     sr_ip_hdr_t *ip_hdr = (sr_ip_hdr_t *)(new_packet + sizeof(sr_ethernet_hdr_t));
-    populate_ip_hdr(ip_hdr, icmp_len, ip_protocol_icmp, sender_ip, old_ip_hdr->ip_src);
+    populate_ip_hdr(ip_hdr, old_len, ip_protocol_icmp, sender_ip, old_ip_hdr->ip_src);
     populate_icmp_hdr(type, new_packet, old_packet);
 
     lookup_and_send(sr, new_packet, packet_len, matching_lpm_entry);

@@ -1,3 +1,4 @@
+#include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -7,6 +8,7 @@
 #include "sr_protocol.h"
 #include "sr_utils.h"
 #include "sr_rt.h"
+
 
 /* len: is in bytes */
 uint16_t cksum (const void *_data, int len) {
@@ -211,18 +213,4 @@ void lookup_and_send(struct sr_instance* sr, uint8_t* packet, int packet_len, st
     struct sr_arpreq *arpreq = sr_arpcache_queuereq(&(sr->cache), lpm->gw.s_addr, packet, packet_len, lpm->interface);
     handle_arpreq(sr, arpreq);
   }
-}
-
-
-struct sr_if* sr_get_if_from_ip (uint32_t ip, struct sr_if* if_list) {
-  struct sr_if *interface = if_list;
-
-  while (interface) {
-    if (ip == interface->ip) {
-      return interface;
-    }
-    interface = interface->next;
-  }
-
-  return NULL;
 }

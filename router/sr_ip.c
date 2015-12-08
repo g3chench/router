@@ -40,7 +40,7 @@ struct sr_if* sr_get_if_from_ip (uint32_t ip_addr, struct sr_if* if_list) {
  * @param  routing table  a linked list of routing entries
  * @return                a routing table entry
  */
-struct sr_rt* lpm(uint32_t ip_addr, struct sr_rt *rtable) {
+struct sr_rt* lpm(uint32_t ip_addr, struct sr_rt *routing_table) {
         struct sr_rt* longest_match = NULL;
         
         /* Loop through the linked list of routing entries in a table */
