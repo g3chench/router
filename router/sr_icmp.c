@@ -12,7 +12,7 @@
 /* 
   This function populates ICMP header. 
 */
-void gen_icmp_hdr(int type, uint8_t *buf, uint8_t *old_packet){
+void populate_icmp_hdr(int type, uint8_t *buf, uint8_t *old_packet){
   sr_ip_hdr_t *ip_hdr = (sr_ip_hdr_t *)(buf + sizeof(sr_ethernet_hdr_t));
   int ip_hl = ip_hdr->ip_hl * 4;
 
@@ -68,7 +68,7 @@ void gen_icmp_hdr(int type, uint8_t *buf, uint8_t *old_packet){
  * @param src      source IP address
  * @param dst      destination IP address
  */
-void gen_ip_hdr(struct sr_ip_hdr *ip_hdr, uint16_t len, uint8_t protocol, uint32_t src, uint32_t dst)
+void populate_ip_hdr(struct sr_ip_hdr *ip_hdr, uint16_t len, uint8_t protocol, uint32_t src, uint32_t dst)
 {
     ip_hdr->ip_hl = 5;
     ip_hdr->ip_v = 4;
@@ -92,7 +92,7 @@ void gen_ip_hdr(struct sr_ip_hdr *ip_hdr, uint16_t len, uint8_t protocol, uint32
  * @param src      source IP address
  * @param type     ethernet type, either IP or ARP
  */
-void gen_eth_hdr(struct sr_ethernet_hdr *eth_hdr, uint8_t  dest[ETHER_ADDR_LEN], 
+void populate_eth_hdr(struct sr_ethernet_hdr *eth_hdr, uint8_t  dest[ETHER_ADDR_LEN], 
               uint8_t  src[ETHER_ADDR_LEN], uint16_t type) {
 
   memcpy(eth_hdr->ether_dhost, dest, ETHER_ADDR_LEN);
@@ -132,10 +132,10 @@ void handle_ICMP (struct sr_instance* sr, int type, uint8_t* old_packet, int old
     eth_hdr->ether_type = htons(ethertype_ip);*/
 
     sr_ip_hdr_t* new_ip_hdr = (sr_ip_hdr_t *)(new_packet + sizeof(sr_ethernet_hdr_t));
-    gen_ip_hdr(new_ip_hdr, old_len, old_ip_hdr->ip_p, old_ip_hdr->ip_dst, old_ip_hdr->ip_src);
-    gen_icmp_hdr(type, old_packet, old_packet);
+    populate_ip_hdr(new_ip_hdr, old_len, old_ip_hdr->ip_p, old_ip_hdr->ip_dst, old_ip_hdr->ip_src);
+    populate_icmp_hdr(type, old_packet, old_packet);
 
-    cached_send(sr, old_packet, old_len, matching_lpm_entry);
+    lookup_and_send(sr, old_packet, old_len, matching_lpm_entry);
   
   /* Create and send ethernet frame for ICMP HOST_[x] or ICMP TIME EXCEEDED */
   } else {
@@ -146,10 +146,10 @@ void handle_ICMP (struct sr_instance* sr, int type, uint8_t* old_packet, int old
     eth_hdr->ether_type = htons(ethertype_ip);
     
     sr_ip_hdr_t *ip_hdr = (sr_ip_hdr_t *)(new_packet + sizeof(sr_ethernet_hdr_t));
-    gen_ip_hdr(ip_hdr, old_len, ip_protocol_icmp, sender_ip, old_ip_hdr->ip_src);
-    gen_icmp_hdr(type, new_packet, old_packet);
+    populate_ip_hdr(ip_hdr, old_len, ip_protocol_icmp, sender_ip, old_ip_hdr->ip_src);
+    populate_icmp_hdr(type, new_packet, old_packet);
 
-    cached_send(sr, new_packet, packet_len, matching_lpm_entry);
+    lookup_and_send(sr, new_packet, packet_len, matching_lpm_entry);
     
     free(new_packet);
   }

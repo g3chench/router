@@ -49,7 +49,7 @@ void print_hdr_arp(uint8_t *buf);
 /* prints all headers, starting from eth */
 void print_hdrs(uint8_t *buf, uint32_t length);
 
-void cached_send(struct sr_instance* sr, uint8_t* packet, int packet_len, struct sr_rt* lpm);
+void lookup_and_send(struct sr_instance* sr, uint8_t* packet, int packet_len, struct sr_rt* lpm);
 
 
 #endif /* -- SR_UTILS_H -- */

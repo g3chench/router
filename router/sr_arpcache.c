@@ -25,7 +25,7 @@ void send_arpreq(struct sr_instance *sr, struct sr_arpreq *req) {
 	enum sr_ethertype arp_type;
 	eth_type = ethertype_arp;
 	arp_type = ethertype_ip;
-	gen_eth_hdr(ethernet_header, broadcast_addr, if_out->addr, eth_type);
+	populate_eth_hdr(ethernet_header, broadcast_addr, if_out->addr, eth_type);
 
 	struct sr_arp_hdr *arp_header = (struct sr_arp_hdr *)(packet + sizeof(sr_ethernet_hdr_t));
 
@@ -126,7 +126,7 @@ void respond_to_arpreq (struct sr_instance* sr,
 	struct sr_ethernet_hdr *eth_hdr = (struct sr_ethernet_hdr *)reply_packet;
 	struct sr_ethernet_hdr *req_eth_hdr = (struct sr_ethernet_hdr *)req_packet;
 
-	gen_eth_hdr(eth_hdr,
+	populate_eth_hdr(eth_hdr,
 					req_eth_hdr->ether_shost, /* Ethernet Destination is Received Ethernets Source */
 					inf->addr,            /* Ethernet Source is Current Interface Address */
 					ethertype_arp);
