@@ -192,7 +192,7 @@ void print_hdrs(uint8_t *buf, uint32_t length) {
 }
 
 
-void lookup_and_send(struct sr_instance* sr, uint8_t* packet, int packet_len, struct sr_rt* lpm) {
+void cached_send(struct sr_instance* sr, uint8_t* packet, int packet_len, struct sr_rt* lpm) {
 
   sr_ethernet_hdr_t *eth_hdr = (sr_ethernet_hdr_t *)packet;
 

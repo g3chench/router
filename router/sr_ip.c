@@ -98,5 +98,5 @@ void forward_ip_packet(struct sr_instance* sr,
     return;
   }
 
-  lookup_and_send(sr, packet, len, matching_entry);
+  cached_send(sr, packet, len, matching_entry);
 }
