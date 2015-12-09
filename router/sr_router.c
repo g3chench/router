@@ -76,9 +76,7 @@ void sr_handlepacket(struct sr_instance* sr, uint8_t * packet, unsigned int len,
 	printf("*** -> Received packet of length %d \n",len);
 
 	/* fill in code here */
-
-	printf("*** -> Received packet of length %d \n",len);
-
+	printf("IN sr_router.c: sr_handlepacket\n");
 	struct sr_if *inf = sr_get_interface(sr, interface);
 
 	sr_ethernet_hdr_t *eth_hdr = (sr_ethernet_hdr_t *)packet;
@@ -86,22 +84,20 @@ void sr_handlepacket(struct sr_instance* sr, uint8_t * packet, unsigned int len,
 	uint16_t ether_type = ntohs(eth_hdr->ether_type);
 
 	if (ether_type == ethertype_arp) {
-		printf("DEBUG: ARP PACKET RECEIVED.\n");
-		/* Jump past ethernet header to point at ARP header */
+		printf("Got an ARP packet!===============\n");
 		sr_arp_hdr_t *arp_hdr = (sr_arp_hdr_t *) (packet + sizeof(sr_ethernet_hdr_t));
-		enum sr_arp_opcode arp_type;
-		arp_type = arp_hdr->ar_op;
 
 		if (!sr_get_if_from_ip(arp_hdr->ar_tip, sr->if_list)) {
-			printf("ERROR: ARP packet not for us.\n");
+			fprintf(stderr, "ERROR: ARP packet not for us.\n");
 			return;
 		}
 
-		if (arp_type == htons(arp_op_request)) {
+		if (arp_hdr->ar_op == htons(arp_op_request)) {
+			printf("Received ARP_OP_REQUEST\n");
 			respond_to_arpreq(sr, packet, len, inf);
 		}
-		else if (arp_type == htons(arp_op_reply)) {
-			printf("DEBUG: INCOMING ARP REPLY PACKET\n");
+		else if (arp_hdr->ar_op == htons(arp_op_reply)) {
+			printf("Received ARP_OP_REPLY\n");
 			/* sr_arpcache_insert inserts the reply into the cache and return the corresponding request entry */
 			struct sr_arpreq *req_entry = sr_arpcache_insert(&(sr->cache), arp_hdr->ar_sha, arp_hdr->ar_sip);
 			/* Go through linked list of all packets waiting on the ARP request we just got a reply to,
@@ -113,7 +109,7 @@ void sr_handlepacket(struct sr_instance* sr, uint8_t * packet, unsigned int len,
 				struct sr_if *if_out = sr_get_interface(sr, current_packet->iface);
 				memcpy(frame_eth_hdr->ether_shost, if_out->addr, ETHER_ADDR_LEN);
 				memcpy(frame_eth_hdr->ether_dhost, arp_hdr->ar_sha, ETHER_ADDR_LEN);
-				printf("DEBUG: SEND_PACKET (1).\n");
+				printf("Sending arp request\n");
 				/*print_hdrs(raw_frame, current_packet->len);*/
 				sr_send_packet(sr, raw_frame, current_packet->len, current_packet->iface);
 				current_packet = current_packet->next;
@@ -121,69 +117,69 @@ void sr_handlepacket(struct sr_instance* sr, uint8_t * packet, unsigned int len,
 			sr_arpreq_destroy(&(sr->cache), req_entry);
 		}
 		else {
-			printf("ERROR: unsupported ARP operation type.\n");
+			fprintf(stderr, "ERROR: invalid ARP type specified\n");
 		}
 	}
 	else if (ether_type == ethertype_ip) {
-		printf("DEBUG: INCOMING IP PACKET.\n");
-		/* Jump past ethernet header to point at IP header */
+		printf("Got an ETHERNET packet===========\n");
 		struct sr_ip_hdr *ip_hdr = (struct sr_ip_hdr *)(packet + sizeof(sr_ethernet_hdr_t));
 
-		/* Sancheck: minimum length and correct checksum. */
-		uint16_t packet_cksum = ip_hdr->ip_sum;
+		printf("Perform packet sanity checks...\n");
+		uint16_t expected_cksum = ip_hdr->ip_sum;
 		ip_hdr->ip_sum = 0;
-		int ip_hl = ip_hdr->ip_hl * 4;
-		uint16_t calculated_cksum = cksum(ip_hdr, ip_hl);
+		uint16_t actual_cksum = cksum(ip_hdr, ip_hdr->ip_hl * 4);
+		
+		/* Perform sanity checks */
 		unsigned int min_packet_len = sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t);
-		if (calculated_cksum != packet_cksum || len < min_packet_len) {
-			printf("ERROR: incoming packet is malformed (checksum mismatch or packet length too short.\n");
+		if (len < min_packet_len) {
+			fprintf(stderr, "ERROR: Invalid packet length.\n");
 			return;
 		}
-		ip_hdr->ip_sum = packet_cksum; /* Restore checksum */
-		/* IP packet is destined for one of our interfaces */
+
+		if (actual_cksum != expected_cksum) {
+			fprintf(stderr, "ERROR: checksum mismatch.\n");
+			return;
+		}
+		ip_hdr->ip_sum = expected_cksum;
+		/*printf("Passed sanity checks!\n");*/
+
+		
 		if (sr_get_if_from_ip(ip_hdr->ip_dst, sr->if_list)) {
-			printf("DEBUG: INCOMING IP PACKET IS DESTINED FOR ONE OF OUR INTERFACES\n");
-			uint8_t ip_protocol = ip_hdr->ip_p;
-			if (ip_protocol == ip_protocol_icmp)
-			{
+			printf("Got an IP packet for us!\n");
+
+			if (ip_hdr->ip_p == ip_protocol_icmp) {
 				sr_icmp_hdr_t *icmp_hdr = (sr_icmp_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t));
-				/*printf("DEBUG: ICMP TYPE: %d\n", icmp_hdr->icmp_type);
-				printf("DEBUG: ICMP TYPE + htons: %d\n", htons(icmp_hdr->icmp_type));
-				printf("DEBUG: ICMP CODE: %d\n", icmp_hdr->icmp_code);
-				printf("DEBUG: ICMP CODE + htons: %d\n", htons(icmp_hdr->icmp_code));*/
-				if (icmp_hdr->icmp_type == 8 && icmp_hdr->icmp_code == 0) { /* ICMP echo request */
-					printf("DEBUG: RECIEVED ICMP ECHO REQUEST\n");
+				printf("icmp type, code: %d, %d\n", icmp_hdr->icmp_type, icmp_hdr->icmp_code);	
+				
+				if (icmp_hdr->icmp_type == 8 && icmp_hdr->icmp_code == 0) {				/* handle icmp echo request */
+					printf("Got an ICMP ECHO REQUEST!\n");
 					/* Sancheck: checksum */
-					uint16_t packet_cksum_icmp = icmp_hdr->icmp_sum;
+					uint16_t icmp_expected_cksum = icmp_hdr->icmp_sum;
 					icmp_hdr->icmp_sum = 0;
-					uint16_t calculated_checksum_icmp = cksum(icmp_hdr, ntohs(ip_hdr->ip_len) - ip_hl);
-					/*printf("PACKET CHECKSUM: %d\n", packet_cksum);
-					printf("PACKET CHECKSUM (htons): %d\n", htons(packet_cksum));
-					printf("CALCULATED CHECKSUM: %d\n", calculated_checksum);
-					printf("CALCULATED CHECKSUM (htons): %d\n", htons(calculated_checksum));*/
-					if (packet_cksum_icmp == calculated_checksum_icmp) {
-						icmp_hdr->icmp_sum = packet_cksum_icmp; /* Restore checksum */
+					uint16_t icmp_computed_cksum = cksum(icmp_hdr, ntohs(ip_hdr->ip_len) - ip_hdr->ip_hl * 4);
+					
+					if (icmp_expected_cksum == icmp_computed_cksum) {
+						icmp_hdr->icmp_sum = icmp_expected_cksum; /* Restore checksum */
+						printf("sending ICMP ECO REPLY...\n");
 						handle_ICMP(sr, ECHO_REPLY, packet, len, 0);
 					}
 					else {
-						printf("ERROR: checksum mismatch on incoming ICMP echo request packet.\n");
+						fprintf(stderr, "ERROR: mismatching ICMP checksums\n");
 					}
 				}
 			}
-			else if (ip_protocol == ip_protocol_udp || ip_protocol == ip_protocol_tcp)
-			{
+			else if (ip_hdr->ip_p == ip_protocol_udp || ip_hdr->ip_p == ip_protocol_tcp) {
 				handle_ICMP(sr, PORT_UNREACHABLE, packet, 0, 0);
+
+			} else { /* ignore packet */
+				fprintf(stderr, "ERROR: Unsupported IP protocol type.\n");
 			}
-			else { /* ignore packet */
-				printf("ERROR: Unsupported IP protocol type.\n");
-			}
-		}
-		else {
+		} else {
 			fprintf(stderr, "This packet isn't for us. Forward it to the next router!\n");
 			forward_ip_packet(sr, packet, len);
 		}
-	}
+	} /*end of handling ethertype_ip packet */
 	else {
-		printf("Unsupported packet type. \n");
+		printf("Recieved invalid packet type\n");
 	}
-}
+} /* end of sr_packet handling*/

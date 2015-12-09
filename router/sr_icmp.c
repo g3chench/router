@@ -115,7 +115,7 @@ void handle_ICMP (struct sr_instance* sr, int type, uint8_t* old_packet, int old
 
   struct sr_rt *matching_lpm_entry = lpm(old_ip_hdr->ip_src, sr->routing_table);
   if (!matching_lpm_entry) {
-    printf("ERROR: no longest prefix match\n");
+    fprintf(stderr, "ERROR: no longest prefix match\n");
     return;
   }
 
