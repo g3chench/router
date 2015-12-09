@@ -29,7 +29,7 @@ void handle_IP (struct sr_instance* sr, uint8_t * packet, unsigned int len, char
     ip_hdr->ip_sum = 0;
     uint16_t actual_cksum = cksum(ip_hdr, ip_hdr->ip_hl * 4);
     
-    /* Perform sanity checks */
+    /******Perform sanity checks **********88*/
     unsigned int min_packet_len = sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t);
     if (len < min_packet_len) {
       fprintf(stderr, "ERROR: Invalid packet length.\n");
@@ -41,11 +41,11 @@ void handle_IP (struct sr_instance* sr, uint8_t * packet, unsigned int len, char
       return;
     }
     ip_hdr->ip_sum = expected_cksum;
-    /*printf("Passed sanity checks!\n");*/
 
-    
+    /****This packet is for us!*******/
+    /*printf("Passed sanity checks!\n");*/
     if (sr_get_if_from_ip(ip_hdr->ip_dst, sr->if_list)) {
-      printf("    Got an IP packet for us!\n");
+      printf("DAMNN 'DIS PACKET IS FOR US\n");
 
       if (ip_hdr->ip_p == ip_protocol_icmp) {
         sr_icmp_hdr_t *icmp_hdr = (sr_icmp_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t));
@@ -69,14 +69,41 @@ void handle_IP (struct sr_instance* sr, uint8_t * packet, unsigned int len, char
         }
       }
       else if (ip_hdr->ip_p == ip_protocol_udp || ip_hdr->ip_p == ip_protocol_tcp) {
-        handle_ICMP(sr, PORT_UNREACHABLE, packet, 0, 0);
+        handle_ICMP(sr, PORT_UNREACHABLE, packet, 0, ip_hdr->ip_dst);
 
       } else { /* ignore packet */
         fprintf(stderr, "ERROR: Unsupported IP protocol type.\n");
       }
+
+    /******PACKET NOT FOR US, FORWARD IT TO NEXT HOP*/
     } else {
-      fprintf(stderr, "    THIS PACKET AIN'T FOR US!\n    Forward it to the next router!\n");
-      forward_ip_pkt(sr, packet, len);
+        fprintf(stderr, "    THIS PACKET AIN'T FOR US!\n    Forward it to the next router!\n");
+        printf("    in forward_ip_pkt()------------\n");
+
+        sr_ip_hdr_t *ip_hdr = (sr_ip_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t));
+
+        if (ip_hdr->ip_ttl <= 1) {
+          fprintf(stderr, "packet's TTL expired! Send ICMP TIME EXCEEDED...\n");
+          handle_ICMP(sr, TIME_EXCEEDED, packet, 0, 0);
+          return;
+        }
+
+        /*reconstruct ip header*/
+        ip_hdr->ip_ttl--;
+        /* recompute the checksum */
+        ip_hdr->ip_sum = 0;
+        ip_hdr->ip_sum = cksum(ip_hdr, ip_hdr->ip_hl * 4);
+
+        printf("find outgoing interface to forward this packet through\n");
+        struct sr_rt *matching_entry = lpm(ip_hdr->ip_dst, sr->routing_table);
+        if (!matching_entry) {
+            fprintf(stderr, "LPM could not find a matching RT entry!\n Send ICMP NET UNREACHABLE packet\n");
+            handle_ICMP(sr, NET_UNREACHABLE, packet, 0, 0);
+            return;
+        }
+
+        /* send IP packet through outgoing interface*/
+        lookup_and_send(sr, packet, len, matching_entry);
     }
 }
 /**
@@ -141,42 +168,4 @@ struct sr_rt* lpm(uint32_t ip_addr, struct sr_rt *routing_table) {
         printf("    Coudn't find LPM match :(\n");
     }
     return matching_entry;
-}
-
-
-
-/**
- * Forward a given IP packet to another interface is it is not to be sent to the previous router.
- * @param sr     an sr_instance
- * @param packet incoming raw frame
- * @param len    length of thise raw frame
- */
-void forward_ip_pkt(struct sr_instance* sr,
-                       uint8_t * packet/* lent */,
-                       unsigned int len) {
-    printf("    in forward_ip_pkt()------------\n");
-
-    sr_ip_hdr_t *ip_hdr = (sr_ip_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t));
-
-    if (ip_hdr->ip_ttl <= 1) {
-      fprintf(stderr, "packet's TTL expired! Send ICMP TIME EXCEEDED...\n");
-      handle_ICMP(sr, TIME_EXCEEDED, packet, 0, 0);
-      return;
-    }
-
-    ip_hdr->ip_ttl--;
-
-    /* recompute the checksum */
-    ip_hdr->ip_sum = 0;
-    ip_hdr->ip_sum = cksum(ip_hdr, ip_hdr->ip_hl * 4);
-
-    struct sr_rt *matching_entry = lpm(ip_hdr->ip_dst, sr->routing_table);
-    if (!matching_entry) {
-        fprintf(stderr, "LPM could not find a matching RT entry!\n Send ICMP NET UNREACHABLE packet\n");
-        handle_ICMP(sr, NET_UNREACHABLE, packet, 0, 0);
-        return;
-    }
-
-    /* send IP packet through outgoing interface*/
-    lookup_and_send(sr, packet, len, matching_entry);
 }

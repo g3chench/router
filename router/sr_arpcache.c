@@ -14,38 +14,42 @@
 #include "sr_icmp.h"
 #include "sr_arpcache.h"
 
+
+
+
+/**/
 void send_arpreq(struct sr_instance *sr, struct sr_arpreq *req) {
+	printf("in send_arpreq() ------------\n");
+
+	/*Construct arp request packet*/
 	int packet_len = sizeof(sr_ethernet_hdr_t) + sizeof(sr_arp_hdr_t);
 	uint8_t *packet = malloc(packet_len);
 
 	struct sr_ethernet_hdr *ethernet_header = (struct sr_ethernet_hdr *)packet;
-	struct sr_if *if_out = sr_get_interface(sr, req->packets->iface);
+	struct sr_if *out_iface = sr_get_interface(sr, req->packets->iface);
+	
 	uint8_t broadcast_addr[ETHER_ADDR_LEN] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
-	enum sr_ethertype eth_type;
-	enum sr_ethertype arp_type;
-	eth_type = ethertype_arp;
-	arp_type = ethertype_ip;
-	populate_eth_hdr(ethernet_header, broadcast_addr, if_out->addr, eth_type);
+	populate_eth_hdr(ethernet_header, broadcast_addr, out_iface->addr, ethertype_arp);
 
 	struct sr_arp_hdr *arp_header = (struct sr_arp_hdr *)(packet + sizeof(sr_ethernet_hdr_t));
 
 	populate_arp_hdr(arp_header, 
 					arp_hrd_ethernet, 
-					arp_type, 
+					ethertype_ip, 
 					ETHER_ADDR_LEN, 
 					4, 
 					arp_op_request, 
-					if_out->addr,
-					if_out->ip, 
+					out_iface->addr,
+					out_iface->ip, 
 					broadcast_addr,
 					req->ip);
 
-	printf("DEBUG: SEND PACKET (3).\n");
-	/*print_hdrs(packet, packet_len);*/
-
-	sr_send_packet(sr, packet, packet_len, if_out->name);
+	/*send ARP request pkt thru outgoing interface*/
+	sr_send_packet(sr, packet, packet_len, out_iface->name);
 	free(packet);
 }
+
+
 
 void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req) {
 	time_t curtime = time(NULL);
@@ -53,9 +57,9 @@ void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req) {
 		/* Send ICMP host unreachable to all waiting packets */
 		if (req->times_sent >= 5) {
 			struct sr_packet *waiting_packet = req->packets; /* linked list */
-			struct sr_if *if_out = sr_get_interface(sr, waiting_packet->iface);
+			struct sr_if *out_iface = sr_get_interface(sr, waiting_packet->iface);
 			while (waiting_packet) {
-				handle_ICMP(sr, HOST_UNREACHABLE, waiting_packet->buf, 0, if_out->ip);
+				handle_ICMP(sr, HOST_UNREACHABLE, waiting_packet->buf, 0, out_iface->ip);
 				waiting_packet = waiting_packet->next;
 			}
 			sr_arpreq_destroy(&(sr->cache), req);
@@ -118,7 +122,7 @@ void populate_arp_hdr(sr_arp_hdr_t * arp_hdr,
 void respond_to_arpreq (struct sr_instance* sr,
 						 uint8_t * req_packet/* lent */,
 						 unsigned int len,
-						 struct sr_if* inf)
+						 struct sr_if* iface)
 {
 	unsigned int packet_len = sizeof(sr_ethernet_hdr_t) + sizeof(sr_arp_hdr_t);
 	uint8_t *reply_packet = malloc(packet_len);
@@ -128,7 +132,7 @@ void respond_to_arpreq (struct sr_instance* sr,
 
 	populate_eth_hdr(eth_hdr,
 					req_eth_hdr->ether_shost, /* Ethernet Destination is Received Ethernets Source */
-					inf->addr,            /* Ethernet Source is Current Interface Address */
+					iface->addr,            /* Ethernet Source is Current Interface Address */
 					ethertype_arp);
 
 	/* Create Reply ARP Header
@@ -142,8 +146,8 @@ void respond_to_arpreq (struct sr_instance* sr,
 					 ETHER_ADDR_LEN,
 					 4,
 					 arp_op_reply,
-					 inf->addr,       /* Source Addr: Current Interface */
-					 inf->ip,         /* Source IP: Current Interface */
+					 iface->addr,       /* Source Addr: Current Interface */
+					 iface->ip,         /* Source IP: Current Interface */
 					 req_arp_hdr->ar_sha, /* Dest Addr: Send Back to ARP Source */
 					 req_arp_hdr->ar_sip);/* Dest IP: Send Back to ARP Source */
 
@@ -151,7 +155,7 @@ void respond_to_arpreq (struct sr_instance* sr,
 	/*print_hdrs(reply_packet, packet_len);*/
 
 	/* Send a reply */
-	sr_send_packet(sr, reply_packet, packet_len, inf->name);
+	sr_send_packet(sr, reply_packet, packet_len, iface->name);
 
 	/* Free after Packet is Sent */
 	free(reply_packet);
