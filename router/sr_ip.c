@@ -11,6 +11,75 @@
 
 
 /**
+ * Handle an IP packet:
+ *   handle ICMP echo replies
+ *   forward IP packet to next-hop router if it's destination is not this router. 
+ * 
+ * @param sr        sr instance
+ * @param packet    incoming packet
+ * @param len       length of this packet
+ * @param interface interface this packet was sent through
+ */
+void handle_IP (struct sr_instance* sr, uint8_t * packet, unsigned int len, char* interface) {
+    printf("in handle_IP()------------\n");
+    struct sr_ip_hdr *ip_hdr = (sr_ip_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t));
+
+    printf("Perform packet sanity checks...\n");
+    uint16_t expected_cksum = ip_hdr->ip_sum;
+    ip_hdr->ip_sum = 0;
+    uint16_t actual_cksum = cksum(ip_hdr, ip_hdr->ip_hl * 4);
+    
+    /* Perform sanity checks */
+    unsigned int min_packet_len = sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t);
+    if (len < min_packet_len) {
+      fprintf(stderr, "ERROR: Invalid packet length.\n");
+      return;
+    }
+
+    if (actual_cksum != expected_cksum) {
+      fprintf(stderr, "ERROR: checksum mismatch.\n");
+      return;
+    }
+    ip_hdr->ip_sum = expected_cksum;
+    /*printf("Passed sanity checks!\n");*/
+
+    
+    if (sr_get_if_from_ip(ip_hdr->ip_dst, sr->if_list)) {
+      printf("    Got an IP packet for us!\n");
+
+      if (ip_hdr->ip_p == ip_protocol_icmp) {
+        sr_icmp_hdr_t *icmp_hdr = (sr_icmp_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t));
+        printf("    icmp type, code: %d, %d\n", icmp_hdr->icmp_type, icmp_hdr->icmp_code);  
+        
+        if (icmp_hdr->icmp_type == 8 && icmp_hdr->icmp_code == 0) {       /* handle icmp echo request */
+          printf("    Got an ICMP ECHO REQUEST!\n");
+          /* Sancheck: checksum */
+          uint16_t icmp_expected_cksum = icmp_hdr->icmp_sum;
+          icmp_hdr->icmp_sum = 0;
+          uint16_t icmp_computed_cksum = cksum(icmp_hdr, ntohs(ip_hdr->ip_len) - ip_hdr->ip_hl * 4);
+          
+          if (icmp_expected_cksum == icmp_computed_cksum) {
+            icmp_hdr->icmp_sum = icmp_expected_cksum; /* Restore checksum */
+            printf("    sending ICMP ECHO REPLY...\n");
+            handle_ICMP(sr, ECHO_REPLY, packet, len, 0);
+          }
+          else {
+            fprintf(stderr, "ERROR: mismatching ICMP checksums\n");
+          }
+        }
+      }
+      else if (ip_hdr->ip_p == ip_protocol_udp || ip_hdr->ip_p == ip_protocol_tcp) {
+        handle_ICMP(sr, PORT_UNREACHABLE, packet, 0, 0);
+
+      } else { /* ignore packet */
+        fprintf(stderr, "ERROR: Unsupported IP protocol type.\n");
+      }
+    } else {
+      fprintf(stderr, "    THIS PACKET AIN'T FOR US!\n    Forward it to the next router!\n");
+      forward_ip_pkt(sr, packet, len);
+    }
+}
+/**
  * Return the interface that corresponds to the given IP address. 
  * @param  ip_addr an IP address
  * @param  if_list Linked list of interfaces to check for a matching IP address
@@ -18,10 +87,13 @@
  */
 struct sr_if* sr_get_if_from_ip (uint32_t ip_addr, struct sr_if* if_list) {
   struct sr_if *iface = if_list;
-
-  /* Traverse through linked list of interfaces in if_list to find a matching interface*/
+  printf("    in sr_get_if_from_ip()------------\n");
+  
+  /* loop through linked list of interfaces to find interface
+     corresponding to given IP adddr*/
   while (iface) {
     if (ip_addr == iface->ip) {
+      printf("    found a matching interface!\n");
       return iface;
     }
 
@@ -41,28 +113,34 @@ struct sr_if* sr_get_if_from_ip (uint32_t ip_addr, struct sr_if* if_list) {
  * @return                a routing table entry
  */
 struct sr_rt* lpm(uint32_t ip_addr, struct sr_rt *routing_table) {
-        struct sr_rt* longest_match = NULL;
-        
-        /* Loop through the linked list of routing entries in a table */
-        struct sr_rt* current_node = NULL;
-        current_node = routing_table;
+    printf("    in lpm()------------\n");
+    struct sr_rt* matching_entry = NULL;
+    struct sr_rt* current_node = NULL;
+    current_node = routing_table;
 
-        while (current_node){
+    /*look through linked list routing table to find entry with longest prefix match*/
+    while (current_node){
 
-            /* check if this entry's prefix matches with the given ip address */
-            if ((ntohl(current_node->dest.s_addr) & ntohl(current_node->mask.s_addr)) 
-                                    == (ntohl(ip_addr) & ntohl(current_node->mask.s_addr))){
+        /* check for prefix match */
+        if ((ntohl(current_node->dest.s_addr) & ntohl(current_node->mask.s_addr)) 
+          == (ntohl(ip_addr) & ntohl(current_node->mask.s_addr))){
 
-                /* Check to see if this matching prefix is longer than our 
-                   current longest matching prefix..update longest_match if it is*/
-                if (longest_match == NULL || current_node->mask.s_addr > longest_match->mask.s_addr){
-                    longest_match = current_node;
-                }
+            /*update current LPM if necessary*/
+            printf("    Check if this entry contains longer matching LPM\n");
+            if (matching_entry == NULL || current_node->mask.s_addr > matching_entry->mask.s_addr){
+                printf("    found entry with longer prefix match--update LPM\n");
+                matching_entry = current_node;
             }
-            /* move to the next entry in the routing table to find the longest matching prefix */
-            current_node = current_node->next;
         }
-        return longest_match;
+        current_node = current_node->next;
+    }
+
+    if (matching_entry) {
+        printf("    Found an LPM match!\n");
+    } else {
+        printf("    Coudn't find LPM match :(\n");
+    }
+    return matching_entry;
 }
 
 
@@ -73,30 +151,32 @@ struct sr_rt* lpm(uint32_t ip_addr, struct sr_rt *routing_table) {
  * @param packet incoming raw frame
  * @param len    length of thise raw frame
  */
-void forward_ip_packet(struct sr_instance* sr,
+void forward_ip_pkt(struct sr_instance* sr,
                        uint8_t * packet/* lent */,
-                       unsigned int len)
-{
-  sr_ip_hdr_t *ip_hdr = (sr_ip_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t));
+                       unsigned int len) {
+    printf("    in forward_ip_pkt()------------\n");
 
-  if (ip_hdr->ip_ttl <= 1) {
-    fprintf(stderr, "This packet's TTL expired!.\n Sending ICMP TIME EXCEEDED packet!\n");
-    handle_ICMP(sr, TIME_EXCEEDED, packet, 0, 0);
-    return;
-  }
+    sr_ip_hdr_t *ip_hdr = (sr_ip_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t));
 
-  ip_hdr->ip_ttl--;
+    if (ip_hdr->ip_ttl <= 1) {
+      fprintf(stderr, "packet's TTL expired! Send ICMP TIME EXCEEDED...\n");
+      handle_ICMP(sr, TIME_EXCEEDED, packet, 0, 0);
+      return;
+    }
 
-  /* recompute the checksum */
-  ip_hdr->ip_sum = 0;
-  ip_hdr->ip_sum = cksum(ip_hdr, ip_hdr->ip_hl * 4);
+    ip_hdr->ip_ttl--;
 
-  struct sr_rt *matching_entry = lpm(ip_hdr->ip_dst, sr->routing_table);
-  if (!matching_entry) {
-    fprintf(stderr, "LPM could not find a matching RT entry!\n Send ICMP NET UNREACHABLE packet\n");
-    handle_ICMP(sr, NET_UNREACHABLE, packet, 0, 0);
-    return;
-  }
+    /* recompute the checksum */
+    ip_hdr->ip_sum = 0;
+    ip_hdr->ip_sum = cksum(ip_hdr, ip_hdr->ip_hl * 4);
 
-  lookup_and_send(sr, packet, len, matching_entry);
+    struct sr_rt *matching_entry = lpm(ip_hdr->ip_dst, sr->routing_table);
+    if (!matching_entry) {
+        fprintf(stderr, "LPM could not find a matching RT entry!\n Send ICMP NET UNREACHABLE packet\n");
+        handle_ICMP(sr, NET_UNREACHABLE, packet, 0, 0);
+        return;
+    }
+
+    /* send IP packet through outgoing interface*/
+    lookup_and_send(sr, packet, len, matching_entry);
 }

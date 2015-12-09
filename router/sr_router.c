@@ -122,64 +122,11 @@ void sr_handlepacket(struct sr_instance* sr, uint8_t * packet, unsigned int len,
 	}
 	else if (ether_type == ethertype_ip) {
 		printf("Got an ETHERNET packet===========\n");
-		struct sr_ip_hdr *ip_hdr = (struct sr_ip_hdr *)(packet + sizeof(sr_ethernet_hdr_t));
-
-		printf("Perform packet sanity checks...\n");
-		uint16_t expected_cksum = ip_hdr->ip_sum;
-		ip_hdr->ip_sum = 0;
-		uint16_t actual_cksum = cksum(ip_hdr, ip_hdr->ip_hl * 4);
+		handle_IP(sr, packet, len, interface);
 		
-		/* Perform sanity checks */
-		unsigned int min_packet_len = sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t);
-		if (len < min_packet_len) {
-			fprintf(stderr, "ERROR: Invalid packet length.\n");
-			return;
-		}
-
-		if (actual_cksum != expected_cksum) {
-			fprintf(stderr, "ERROR: checksum mismatch.\n");
-			return;
-		}
-		ip_hdr->ip_sum = expected_cksum;
-		/*printf("Passed sanity checks!\n");*/
-
-		
-		if (sr_get_if_from_ip(ip_hdr->ip_dst, sr->if_list)) {
-			printf("Got an IP packet for us!\n");
-
-			if (ip_hdr->ip_p == ip_protocol_icmp) {
-				sr_icmp_hdr_t *icmp_hdr = (sr_icmp_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t));
-				printf("icmp type, code: %d, %d\n", icmp_hdr->icmp_type, icmp_hdr->icmp_code);	
-				
-				if (icmp_hdr->icmp_type == 8 && icmp_hdr->icmp_code == 0) {				/* handle icmp echo request */
-					printf("Got an ICMP ECHO REQUEST!\n");
-					/* Sancheck: checksum */
-					uint16_t icmp_expected_cksum = icmp_hdr->icmp_sum;
-					icmp_hdr->icmp_sum = 0;
-					uint16_t icmp_computed_cksum = cksum(icmp_hdr, ntohs(ip_hdr->ip_len) - ip_hdr->ip_hl * 4);
-					
-					if (icmp_expected_cksum == icmp_computed_cksum) {
-						icmp_hdr->icmp_sum = icmp_expected_cksum; /* Restore checksum */
-						printf("sending ICMP ECO REPLY...\n");
-						handle_ICMP(sr, ECHO_REPLY, packet, len, 0);
-					}
-					else {
-						fprintf(stderr, "ERROR: mismatching ICMP checksums\n");
-					}
-				}
-			}
-			else if (ip_hdr->ip_p == ip_protocol_udp || ip_hdr->ip_p == ip_protocol_tcp) {
-				handle_ICMP(sr, PORT_UNREACHABLE, packet, 0, 0);
-
-			} else { /* ignore packet */
-				fprintf(stderr, "ERROR: Unsupported IP protocol type.\n");
-			}
-		} else {
-			fprintf(stderr, "This packet isn't for us. Forward it to the next router!\n");
-			forward_ip_packet(sr, packet, len);
-		}
 	} /*end of handling ethertype_ip packet */
 	else {
-		printf("Recieved invalid packet type\n");
+		fprintf(stderr, "Got an invalid packet type(not IP or ARP)...\n");
 	}
 } /* end of sr_packet handling*/
+
