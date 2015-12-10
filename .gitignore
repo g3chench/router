@@ -35,3 +35,5 @@
 # OS files
 .DS_Store
 *.swp
+
+*.pcap
