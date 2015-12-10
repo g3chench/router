@@ -14,66 +14,50 @@
 #include "sr_rt.h"
 #include "sr_icmp.h"
 
-
-
-void handle_ARP(struct sr_instance* sr, uint8_t * packet, unsigned int len, char* interface) {
-    printf("In handle_ARP()---------------\n");
-    
-    struct sr_if *inf = sr_get_interface(sr, interface);
-    sr_arp_hdr_t *arp_hdr = (sr_arp_hdr_t *) (packet + sizeof(sr_ethernet_hdr_t));
-
-    if (!get_iface(arp_hdr->ar_tip, sr)) {
-        fprintf(stderr, "ERROR: This ARP packet is not for us\n");
-        return;
+/* 
+  This function gets called every second. For each request sent out, we keep
+  checking whether we should resend an request or destroy the arp request.
+  See the comments in the header file for an idea of what it should look like.
+*/
+void sr_arpcache_sweepreqs(struct sr_instance *sr) {
+    struct sr_arpreq *req = sr->cache.requests; /* linked list of requests */
+    while (req) {
+        /* Store next request because handle_arpreq may destroy current one */
+        struct sr_arpreq *nextReq = req->next;
+        handle_arpreq(sr, req);
+        req = nextReq;
     }
-
-    if (arp_hdr->ar_op == htons(arp_op_request)) {
-        printf("    got an arp op_request\n");
-        handle_op_request(sr, packet, len, inf);
-    }
-    else if (arp_hdr->ar_op == htons(arp_op_reply)) {
-        printf("    got an op_reply\n");
-        handle_op_reply(sr, arp_hdr);
-
-    } else {
-        fprintf(stderr, "ERROR: invalid ARP type specified\n");
-    }
-} /*end of handle_ARP() */
-
-
-/**
- * Send an ARP request given an ARP reply.
- * @param sr      sr instance
- * @param arp_hdr arp header containing the arp reply
- */
-void handle_op_reply(struct sr_instance *sr, sr_arp_hdr_t *arp_hdr) {
-    printf("    In handle_op_reply() ----------------\n");
-
-    struct sr_arpreq *req_entry = sr_arpcache_insert(&(sr->cache), arp_hdr->ar_sha, arp_hdr->ar_sip);
-    printf("    Loop through list of recent packets that replied to us and send arp reply for each...\n");
-    
-    /* Loop through packet we recieved an ARP request from and reply to each with an
-    ARP reply packet. */
-    struct sr_packet *current_packet = req_entry->packets;
-    while (current_packet) {
-        printf("        Constructing arp request packet..\n");
-        uint8_t *reply_pkt = current_packet->buf;
-        
-        sr_ethernet_hdr_t *eth_hdr = (sr_ethernet_hdr_t *) reply_pkt;
-        struct sr_if *out_iface = sr_get_interface(sr, current_packet->iface);
-        memcpy(eth_hdr->ether_shost, out_iface->addr, ETHER_ADDR_LEN);
-        memcpy(eth_hdr->ether_dhost, arp_hdr->ar_sha, ETHER_ADDR_LEN);
-        
-        printf("        sending arp request packet...\n");
-        sr_send_packet(sr, reply_pkt, current_packet->len, current_packet->iface);
-        
-        current_packet = current_packet->next;
-    }
-    
-    /*Remove the arp request after sending a reply to it*/
-    sr_arpreq_destroy(&(sr->cache), req_entry);
 }
 
+/* After 1.0 second of sending the given arp request, check if this
+* request was already sent 5 times. If it ha, send ICMP host unreachable
+* message to packets waiting for a reply in a linked list. 
+* Do not attempt to send this request again otherwise...
+*/
+void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req) {
+    printf("    In handle_arpreq()------------------\n");
+    time_t now = time(NULL);
+
+    if (difftime(now, req->sent) > 1.0) {
+        if (req->times_sent >= 5) {
+            printf("This packet was sent 5 times already. Send ICMP HOST_UNREACHABLE \n");
+            struct sr_packet *current_packet = req->packets;
+            struct sr_if *out_iface = sr_get_interface(sr, current_packet->iface);
+
+            while (current_packet) {
+                handle_ICMP(sr, HOST_UNREACHABLE, current_packet->buf, 0, out_iface->ip);
+                current_packet = current_packet->next;
+            }
+            sr_arpreq_destroy(&(sr->cache), req);
+
+        /* Otherwise, send an ARP request */
+        } else {
+            send_arpreq(sr, req);
+            req->sent = now;
+            req->times_sent++;
+        }
+    }
+}
 
 
 /**
@@ -111,40 +95,6 @@ void send_arpreq(struct sr_instance *sr, struct sr_arpreq *request) {
     sr_send_packet(sr, packet, packet_len, out_iface->name);
     free(packet);
 }
-
-
-
-/* After 1.0 second of sending the given arp request, check if this
-* request was already sent 5 times. If it ha, send ICMP host unreachable
-* message to packets waiting for a reply in a linked list. 
-* Do not attempt to send this request again otherwise...
-*/
-void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req) {
-    printf("    In handle_arpreq()------------------\n");
-    time_t curtime = time(NULL);
-
-    if (difftime(curtime, req->sent) >= 1.0) {
-        if (req->times_sent >= 5) {
-            printf("This packet was sent 5 times already. Send ICMP HOST_UNREACHABLE \n");
-            struct sr_packet *waiting_pkts = req->packets;
-            struct sr_if *out_iface = sr_get_interface(sr, waiting_pkts->iface);
-
-            while (waiting_pkts) {
-                handle_ICMP(sr, HOST_UNREACHABLE, waiting_pkts->buf, 0, out_iface->ip);
-                waiting_pkts = waiting_pkts->next;
-            }
-            sr_arpreq_destroy(&(sr->cache), req);
-
-        /* Otherwise, send an ARP request */
-        } else {
-            send_arpreq(sr, req);
-            req->sent = curtime;
-            req->times_sent++;
-        }
-    }
-}
-
-
 
 /**
  * Fill in an arp header given its pointer. 
@@ -184,23 +134,62 @@ void gen_arp_hdr(sr_arp_hdr_t * arp_hdr,
 }
 
 
+void handle_ARP(struct sr_instance* sr, uint8_t * packet, unsigned int len, char* interface) {
+    printf("In handle_ARP()---------------\n");
+    
+    struct sr_if *inf = sr_get_interface(sr, interface);
+    sr_arp_hdr_t *arp_hdr = (sr_arp_hdr_t *) (packet + sizeof(sr_ethernet_hdr_t));
 
-/* 
-  This function gets called every second. For each request sent out, we keep
-  checking whether we should resend an request or destroy the arp request.
-  See the comments in the header file for an idea of what it should look like.
-*/
-void sr_arpcache_sweepreqs(struct sr_instance *sr) {
-    struct sr_arpreq *request = sr->cache.requests; /* linked list of requests */
-    while (request) {
-        /* Store next request because handle_arpreq may destroy current one */
-        struct sr_arpreq *next_request = request->next;
-        handle_arpreq(sr, request);
-        request = next_request;
+    if (!get_iface(arp_hdr->ar_tip, sr)) {
+        fprintf(stderr, "ERROR: This ARP packet is not for us\n");
+        return;
     }
+
+    if (arp_hdr->ar_op == htons(arp_op_request)) {
+        printf("    got an arp op_request\n");
+        handle_arp_request(sr, packet, len, inf);
+    }
+    else if (arp_hdr->ar_op == htons(arp_op_reply)) {
+        printf("    got an op_reply\n");
+        handle_arp_reply(sr, arp_hdr);
+
+    } else {
+        fprintf(stderr, "ERROR: invalid ARP type specified\n");
+    }
+} /*end of handle_ARP() */
+
+/**
+ * Send an ARP request given an ARP reply.
+ * @param sr      sr instance
+ * @param arp_hdr arp header containing the arp reply
+ */
+void handle_arp_reply(struct sr_instance *sr, sr_arp_hdr_t *arp_hdr) {
+    printf("    In handle_arp_reply() ----------------\n");
+
+    struct sr_arpreq *req_entry = sr_arpcache_insert(&(sr->cache), arp_hdr->ar_sha, arp_hdr->ar_sip);
+    printf("    Loop through list of recent packets that replied to us and send arp reply for each...\n");
+    
+    /* Loop through packet we recieved an ARP request from and reply to each with an
+    ARP reply packet. */
+    struct sr_packet *current_packet = req_entry->packets;
+    while (current_packet) {
+        printf("        Constructing arp request packet..\n");
+        uint8_t *reply_pkt = current_packet->buf;
+        
+        sr_ethernet_hdr_t *eth_hdr = (sr_ethernet_hdr_t *) reply_pkt;
+        struct sr_if *out_iface = sr_get_interface(sr, current_packet->iface);
+        memcpy(eth_hdr->ether_shost, out_iface->addr, ETHER_ADDR_LEN);
+        memcpy(eth_hdr->ether_dhost, arp_hdr->ar_sha, ETHER_ADDR_LEN);
+        
+        printf("        sending arp request packet...\n");
+        sr_send_packet(sr, reply_pkt, current_packet->len, current_packet->iface);
+        
+        current_packet = current_packet->next;
+    }
+    
+    /*Remove the arp request after sending a reply to it*/
+    sr_arpreq_destroy(&(sr->cache), req_entry);
 }
-
-
 
 /**
  * Respond to an ARP op request by constructing an ARP reply to send back
@@ -211,7 +200,7 @@ void sr_arpcache_sweepreqs(struct sr_instance *sr) {
  * @param len         length of ARP request packet
  * @param iface       interface this request packet was sent through
  */
-void handle_op_request (struct sr_instance* sr,
+void handle_arp_request (struct sr_instance* sr,
                          uint8_t * request_pkt, 
                          unsigned int len,
                          struct sr_if* iface) {

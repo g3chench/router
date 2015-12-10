@@ -107,29 +107,6 @@ struct sr_arpcache {
     pthread_mutexattr_t attr;
 };
 
-void handle_ARP(struct sr_instance* sr, uint8_t * packet, unsigned int len, char* interface);
-
-void handle_op_request (struct sr_instance* sr,
-                         uint8_t * req_packet,
-                         unsigned int len,
-                         struct sr_if* inf);
-
-void handle_op_reply(struct sr_instance *sr, sr_arp_hdr_t *arp_hdr);
-
-void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req);
-
-void gen_arp_hdr(sr_arp_hdr_t *,
-                unsigned short hw_fmt, 
-                unsigned short protocol, 
-                unsigned char hw_addr_len, 
-                unsigned char protocol_fmt, 
-                unsigned short opcode, 
-                unsigned char* sha, 
-                uint32_t sip, 
-                unsigned char* tha, 
-                uint32_t tip); 
-
-
 /* Checks if an IP->MAC mapping is in the cache. IP is in network byte order. 
    You must free the returned structure if it is not NULL. */
 struct sr_arpentry *sr_arpcache_lookup(struct sr_arpcache *cache, uint32_t ip);
@@ -170,5 +147,31 @@ void sr_arpcache_dump(struct sr_arpcache *cache);
 int   sr_arpcache_init(struct sr_arpcache *cache);
 int   sr_arpcache_destroy(struct sr_arpcache *cache);
 void *sr_arpcache_timeout(void *cache_ptr);
+
+void sr_arpcache_sweepreqs(struct sr_instance *sr);
+
+void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req);
+
+void send_arpreq(struct sr_instance *sr, struct sr_arpreq *request);
+
+void handle_ARP(struct sr_instance* sr, uint8_t * packet, unsigned int len, char* interface);
+
+void handle_arp_reply(struct sr_instance *sr, sr_arp_hdr_t *arp_hdr);
+
+void handle_arp_request (struct sr_instance* sr,
+                         uint8_t * req_packet,
+                         unsigned int len,
+                         struct sr_if* inf);
+
+void gen_arp_hdr(sr_arp_hdr_t *,
+                unsigned short hw_fmt, 
+                unsigned short protocol, 
+                unsigned char hw_addr_len, 
+                unsigned char protocol_fmt, 
+                unsigned short opcode, 
+                unsigned char* sha, 
+                uint32_t sip, 
+                unsigned char* tha, 
+                uint32_t tip); 
 
 #endif
