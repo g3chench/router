@@ -107,13 +107,17 @@ struct sr_arpcache {
     pthread_mutexattr_t attr;
 };
 
+void handle_ARP(struct sr_instance* sr, uint8_t * packet, unsigned int len, char* interface);
+
+void handle_op_reply(struct sr_instance *sr, sr_arp_hdr_t *arp_hdr);
+
 void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req);
 
 /*
  * Pass in the ARP Header to be populated
  * with it's corresponding params
  */
-void populate_arp_hdr(sr_arp_hdr_t *,
+void gen_arp_hdr(sr_arp_hdr_t *,
                       unsigned short, /* format of hardware address   */
                       unsigned short, /* format of protocol address   */
                       unsigned char,  /* length of hardware address   */
@@ -129,7 +133,7 @@ void populate_arp_hdr(sr_arp_hdr_t *,
  * Create New ARP Header
  * Sends the packet back to source
  */
-void respond_to_arpreq (struct sr_instance* sr,
+void handle_op_request (struct sr_instance* sr,
                          uint8_t * req_packet,
                          unsigned int len,
                          struct sr_if* inf);

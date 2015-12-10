@@ -16,24 +16,87 @@
 
 
 
+void handle_ARP(struct sr_instance* sr, uint8_t * packet, unsigned int len, char* interface) {
+	printf("In handle_ARP()---------------\n");
+	
+	struct sr_if *inf = sr_get_interface(sr, interface);
+	sr_arp_hdr_t *arp_hdr = (sr_arp_hdr_t *) (packet + sizeof(sr_ethernet_hdr_t));
 
-/**/
-void send_arpreq(struct sr_instance *sr, struct sr_arpreq *req) {
-	printf("in send_arpreq() ------------\n");
+	if (!sr_get_if_from_ip(arp_hdr->ar_tip, sr->if_list)) {
+		fprintf(stderr, "ERROR: This ARP packet is not for us\n");
+		return;
+	}
+
+	if (arp_hdr->ar_op == htons(arp_op_request)) {
+		printf("	got an arp op_request\n");
+		handle_op_request(sr, packet, len, inf);
+	}
+	else if (arp_hdr->ar_op == htons(arp_op_reply)) {
+		printf("	got an op_reply\n");
+		handle_op_reply(sr, arp_hdr);
+
+	} else {
+		fprintf(stderr, "ERROR: invalid ARP type specified\n");
+	}
+} /*end of handle_ARP() */
+
+
+/**
+ * Send an ARP request given an ARP reply.
+ * @param sr      sr instance
+ * @param arp_hdr arp header containing the arp reply
+ */
+void handle_op_reply(struct sr_instance *sr, sr_arp_hdr_t *arp_hdr) {
+	printf("	In handle_op_reply() ----------------\n");
+
+	struct sr_arpreq *req_entry = sr_arpcache_insert(&(sr->cache), arp_hdr->ar_sha, arp_hdr->ar_sip);
+	printf("	Loop through list of recent packets that replied to us and send arp reply for each...\n");
+	
+	/* Loop through packet we recieved an ARP request from and reply to each with an
+	ARP reply packet. */
+	struct sr_packet *current_packet = req_entry->packets;
+	while (current_packet) {
+		printf("		Constructing arp request packet..\n");
+		uint8_t *reply_pkt = current_packet->buf;
+		
+		sr_ethernet_hdr_t *eth_hdr = (sr_ethernet_hdr_t *) reply_pkt;
+		struct sr_if *out_iface = sr_get_interface(sr, current_packet->iface);
+		memcpy(eth_hdr->ether_shost, out_iface->addr, ETHER_ADDR_LEN);
+		memcpy(eth_hdr->ether_dhost, arp_hdr->ar_sha, ETHER_ADDR_LEN);
+		
+		printf("		sending arp request packet...\n");
+		sr_send_packet(sr, reply_pkt, current_packet->len, current_packet->iface);
+		
+		current_packet = current_packet->next;
+	}
+	
+	/*Remove the arp request after sending a reply to it*/
+	sr_arpreq_destroy(&(sr->cache), req_entry);
+}
+
+
+
+/**
+ * Send an arp request packet
+ * @param sr  sr instance
+ * @param request ARP request packet received
+ */
+void send_arpreq(struct sr_instance *sr, struct sr_arpreq *request) {
+	printf("	in send_arpreq() ------------\n");
 
 	/*Construct arp request packet*/
 	int packet_len = sizeof(sr_ethernet_hdr_t) + sizeof(sr_arp_hdr_t);
 	uint8_t *packet = malloc(packet_len);
 
 	struct sr_ethernet_hdr *ethernet_header = (struct sr_ethernet_hdr *)packet;
-	struct sr_if *out_iface = sr_get_interface(sr, req->packets->iface);
+	struct sr_if *out_iface = sr_get_interface(sr, request->packets->iface);
 	
 	uint8_t broadcast_addr[ETHER_ADDR_LEN] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 	populate_eth_hdr(ethernet_header, broadcast_addr, out_iface->addr, ethertype_arp);
 
-	struct sr_arp_hdr *arp_header = (struct sr_arp_hdr *)(packet + sizeof(sr_ethernet_hdr_t));
+	struct sr_arp_hdr *arp_hdr = (struct sr_arp_hdr *)(packet + sizeof(sr_ethernet_hdr_t));
 
-	populate_arp_hdr(arp_header, 
+	gen_arp_hdr(arp_hdr, 
 					arp_hrd_ethernet, 
 					ethertype_ip, 
 					ETHER_ADDR_LEN, 
@@ -42,7 +105,7 @@ void send_arpreq(struct sr_instance *sr, struct sr_arpreq *req) {
 					out_iface->addr,
 					out_iface->ip, 
 					broadcast_addr,
-					req->ip);
+					request->ip);
 
 	/*send ARP request pkt thru outgoing interface*/
 	sr_send_packet(sr, packet, packet_len, out_iface->name);
@@ -52,19 +115,28 @@ void send_arpreq(struct sr_instance *sr, struct sr_arpreq *req) {
 
 
 void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req) {
+	printf("	In handle_arpreq()------------------\n");
 	time_t curtime = time(NULL);
-	if (difftime(curtime, req->sent) >= 0.9) {
-		/* Send ICMP host unreachable to all waiting packets */
+
+	/* After 1.0 second of sending the arp request, check if this
+	 * request was already sent 5 times. If it ha, send ICMP host unreachable
+	 * message to packets waiting for a reply in a linked list. 
+	 * Do not attempt to send this request again 
+	 */
+	if (difftime(curtime, req->sent) >= 1.0) {
 		if (req->times_sent >= 5) {
-			struct sr_packet *waiting_packet = req->packets; /* linked list */
-			struct sr_if *out_iface = sr_get_interface(sr, waiting_packet->iface);
-			while (waiting_packet) {
-				handle_ICMP(sr, HOST_UNREACHABLE, waiting_packet->buf, 0, out_iface->ip);
-				waiting_packet = waiting_packet->next;
+			printf("This packet was sent 5 times already. Send ICMP HOST_UNREACHABLE \n");
+			struct sr_packet *waiting_pkts = req->packets;
+			struct sr_if *out_iface = sr_get_interface(sr, waiting_pkts->iface);
+
+			while (waiting_pkts) {
+				handle_ICMP(sr, HOST_UNREACHABLE, waiting_pkts->buf, 0, out_iface->ip);
+				waiting_pkts = waiting_pkts->next;
 			}
 			sr_arpreq_destroy(&(sr->cache), req);
-		}
-		else {
+
+		/* Otherwise, send an ARP request */
+		} else {
 			send_arpreq(sr, req);
 			req->sent = curtime;
 			req->times_sent++;
@@ -88,10 +160,9 @@ void sr_arpcache_sweepreqs(struct sr_instance *sr) {
 }
 
 /*
- * Pass in the ARP Header to be populated
- * with it's corresponding params
+ * Fill in the information for an ARP header pointer passed in. 
  */
-void populate_arp_hdr(sr_arp_hdr_t * arp_hdr,
+void gen_arp_hdr(sr_arp_hdr_t * arp_hdr,
 					  unsigned short  ar_hrd,
 					  unsigned short  ar_pro,
 					  unsigned char   ar_hln,
@@ -119,46 +190,39 @@ void populate_arp_hdr(sr_arp_hdr_t * arp_hdr,
  * Create New ARP Header
  * Sends the packet back to source
  */
-void respond_to_arpreq (struct sr_instance* sr,
-						 uint8_t * req_packet/* lent */,
+void handle_op_request (struct sr_instance* sr,
+						 uint8_t * request_pkt, 
 						 unsigned int len,
-						 struct sr_if* iface)
-{
-	unsigned int packet_len = sizeof(sr_ethernet_hdr_t) + sizeof(sr_arp_hdr_t);
-	uint8_t *reply_packet = malloc(packet_len);
+						 struct sr_if* iface) {
 
-	struct sr_ethernet_hdr *eth_hdr = (struct sr_ethernet_hdr *)reply_packet;
-	struct sr_ethernet_hdr *req_eth_hdr = (struct sr_ethernet_hdr *)req_packet;
+	/* Contruct arp reply packet to send back to the source address and IP. */
+	unsigned int reply_pkt_len = sizeof(sr_ethernet_hdr_t) + sizeof(sr_arp_hdr_t);
+	uint8_t *reply_pkt = malloc(reply_pkt_len);
 
-	populate_eth_hdr(eth_hdr,
-					req_eth_hdr->ether_shost, /* Ethernet Destination is Received Ethernets Source */
-					iface->addr,            /* Ethernet Source is Current Interface Address */
+	struct sr_ethernet_hdr *request_eth_hdr = (struct sr_ethernet_hdr *)request_pkt;
+	struct sr_ethernet_hdr *reply_arp_hdr = (struct sr_ethernet_hdr *)reply_pkt;
+
+	populate_eth_hdr(reply_arp_hdr,
+					request_eth_hdr->ether_shost, 
+					iface->addr, 
 					ethertype_arp);
 
-	/* Create Reply ARP Header
-	 * Reply Source is Current Interface IP
-	 * Reply Destination is Received ARP's Source */
-	struct sr_arp_hdr *arp_hdr = ((struct sr_arp_hdr *)(reply_packet + sizeof(sr_ethernet_hdr_t)));
-	struct sr_arp_hdr *req_arp_hdr = ((struct sr_arp_hdr *)(req_packet + sizeof(sr_ethernet_hdr_t)));
-	populate_arp_hdr(arp_hdr,
+	struct sr_arp_hdr *arp_hdr = ((struct sr_arp_hdr *)(reply_pkt + sizeof(sr_ethernet_hdr_t)));
+	struct sr_arp_hdr *request_arp_hdr = ((struct sr_arp_hdr *)(request_pkt + sizeof(sr_ethernet_hdr_t)));
+	gen_arp_hdr(arp_hdr,
 					 arp_hrd_ethernet,
 					 ethertype_ip,
 					 ETHER_ADDR_LEN,
 					 4,
 					 arp_op_reply,
-					 iface->addr,       /* Source Addr: Current Interface */
-					 iface->ip,         /* Source IP: Current Interface */
-					 req_arp_hdr->ar_sha, /* Dest Addr: Send Back to ARP Source */
-					 req_arp_hdr->ar_sip);/* Dest IP: Send Back to ARP Source */
+					 iface->addr, 
+					 iface->ip,
+					 request_arp_hdr->ar_sha, 
+					 request_arp_hdr->ar_sip);
 
-	/*printf("DEBUG: PRINTING OUT ALL REPLY PACKET INFO\n");*/
-	/*print_hdrs(reply_packet, packet_len);*/
+	sr_send_packet(sr, reply_pkt, reply_pkt_len, iface->name);
 
-	/* Send a reply */
-	sr_send_packet(sr, reply_packet, packet_len, iface->name);
-
-	/* Free after Packet is Sent */
-	free(reply_packet);
+	free(reply_pkt);
 }
 
 /* You should not need to touch the rest of this code. */
