@@ -114,15 +114,15 @@ void send_arpreq(struct sr_instance *sr, struct sr_arpreq *request) {
 
 
 
+/* After 1.0 second of sending the given arp request, check if this
+* request was already sent 5 times. If it ha, send ICMP host unreachable
+* message to packets waiting for a reply in a linked list. 
+* Do not attempt to send this request again otherwise...
+*/
 void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req) {
 	printf("	In handle_arpreq()------------------\n");
 	time_t curtime = time(NULL);
 
-	/* After 1.0 second of sending the arp request, check if this
-	 * request was already sent 5 times. If it ha, send ICMP host unreachable
-	 * message to packets waiting for a reply in a linked list. 
-	 * Do not attempt to send this request again 
-	 */
 	if (difftime(curtime, req->sent) >= 1.0) {
 		if (req->times_sent >= 5) {
 			printf("This packet was sent 5 times already. Send ICMP HOST_UNREACHABLE \n");
@@ -144,20 +144,7 @@ void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req) {
 	}
 }
 
-/* 
-  This function gets called every second. For each request sent out, we keep
-  checking whether we should resend an request or destroy the arp request.
-  See the comments in the header file for an idea of what it should look like.
-*/
-void sr_arpcache_sweepreqs(struct sr_instance *sr) {
-	struct sr_arpreq *request = sr->cache.requests; /* linked list of requests */
-	while (request) {
-		/* Store next request because handle_arpreq may destroy current one */
-		struct sr_arpreq *next_request = request->next;
-		handle_arpreq(sr, request);
-		request = next_request;
-	}
-}
+
 
 /**
  * Fill in an arp header given its pointer. 
@@ -194,6 +181,23 @@ void gen_arp_hdr(sr_arp_hdr_t * arp_hdr,
 	arp_hdr->ar_tip = tip;
 	memcpy(arp_hdr->ar_sha, sha, ETHER_ADDR_LEN);
 	memcpy(arp_hdr->ar_tha, tha, ETHER_ADDR_LEN);
+}
+
+
+
+/* 
+  This function gets called every second. For each request sent out, we keep
+  checking whether we should resend an request or destroy the arp request.
+  See the comments in the header file for an idea of what it should look like.
+*/
+void sr_arpcache_sweepreqs(struct sr_instance *sr) {
+	struct sr_arpreq *request = sr->cache.requests; /* linked list of requests */
+	while (request) {
+		/* Store next request because handle_arpreq may destroy current one */
+		struct sr_arpreq *next_request = request->next;
+		handle_arpreq(sr, request);
+		request = next_request;
+	}
 }
 
 
