@@ -1,15 +1,24 @@
+#include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include "sr_arpcache.h"
+#include "sr_router.h"
+#include "sr_if.h"
 #include "sr_protocol.h"
 #include "sr_utils.h"
+#include "sr_rt.h"
 
 
+/* len: is in bytes */
 uint16_t cksum (const void *_data, int len) {
   const uint8_t *data = _data;
   uint32_t sum;
 
   for (sum = 0;len >= 2; data += 2, len -= 2)
+    /* connect first byte (8 bits) with second byte, 
+     * need to shift over first byte first
+     */
     sum += data[0] << 8 | data[1];
   if (len > 0)
     sum += data[0] << 8;
@@ -18,7 +27,6 @@ uint16_t cksum (const void *_data, int len) {
   sum = htons (~sum);
   return sum ? sum : 0xffff;
 }
-
 
 uint16_t ethertype(uint8_t *buf) {
   sr_ethernet_hdr_t *ehdr = (sr_ethernet_hdr_t *)buf;
@@ -183,3 +191,31 @@ void print_hdrs(uint8_t *buf, uint32_t length) {
   }
 }
 
+
+void cached_send(struct sr_instance* sr, uint8_t* packet, int len, struct sr_rt* matching_entry) {
+
+    /* construct outgoing packet*/
+    sr_ethernet_hdr_t *eth_hdr = (sr_ethernet_hdr_t *)packet;
+
+    /* Look for matching MAC address in ARP cache to send this packet to*/
+    struct sr_arpentry *arpentry = sr_arpcache_lookup(&(sr->cache), matching_entry->gw.s_addr);
+
+    if (arpentry) {
+        printf("ARP cache hit!!!\n");
+
+        /*set the MAC address of matching entry as the outgoing packet's destination*/
+        struct sr_if* out_if = sr_get_interface(sr, matching_entry->interface);
+        memcpy(eth_hdr->ether_dhost, arpentry->mac, ETHER_ADDR_LEN);
+        memcpy(eth_hdr->ether_shost, out_if->addr, ETHER_ADDR_LEN);
+        
+        sr_send_packet(sr, packet, len, matching_entry->interface);
+        free(arpentry);
+
+    } else {
+        printf("cache miss!!!\n");
+        /* send an ARP request to get the destination MAC addr for our outgoing packet */
+        struct sr_arpreq *arpreq = sr_arpcache_queuereq(&(sr->cache), matching_entry->gw.s_addr, packet, len, matching_entry->interface);
+        
+        handle_arpreq(sr, arpreq);
+    }
+}
