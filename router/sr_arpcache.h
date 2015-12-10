@@ -109,34 +109,26 @@ struct sr_arpcache {
 
 void handle_ARP(struct sr_instance* sr, uint8_t * packet, unsigned int len, char* interface);
 
-void handle_op_reply(struct sr_instance *sr, sr_arp_hdr_t *arp_hdr);
-
-void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req);
-
-/*
- * Pass in the ARP Header to be populated
- * with it's corresponding params
- */
-void gen_arp_hdr(sr_arp_hdr_t *,
-                      unsigned short, /* format of hardware address   */
-                      unsigned short, /* format of protocol address   */
-                      unsigned char,  /* length of hardware address   */
-                      unsigned char,  /* length of protocol address   */
-                      unsigned short, /* ARP opcode (command)         */
-                      unsigned char*,  /* sender hardware address      */
-                      uint32_t,       /* sender IP address            */
-                      unsigned char*,  /* target hardware address      */
-                      uint32_t);      /* target IP address            */
-/*
- * Contains Logic to Handle ARP Request
- * Create New Ethernet Header
- * Create New ARP Header
- * Sends the packet back to source
- */
 void handle_op_request (struct sr_instance* sr,
                          uint8_t * req_packet,
                          unsigned int len,
                          struct sr_if* inf);
+
+void handle_op_reply(struct sr_instance *sr, sr_arp_hdr_t *arp_hdr);
+
+void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req);
+
+void gen_arp_hdr(sr_arp_hdr_t *,
+                unsigned short hw_fmt, 
+                unsigned short protocol, 
+                unsigned char hw_addr_len, 
+                unsigned char protocol_fmt, 
+                unsigned short opcode, 
+                unsigned char* sha, 
+                uint32_t sip, 
+                unsigned char* tha, 
+                uint32_t tip); 
+
 
 /* Checks if an IP->MAC mapping is in the cache. IP is in network byte order. 
    You must free the returned structure if it is not NULL. */

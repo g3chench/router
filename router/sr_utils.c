@@ -192,25 +192,30 @@ void print_hdrs(uint8_t *buf, uint32_t length) {
 }
 
 
-void lookup_and_send(struct sr_instance* sr, uint8_t* packet, int packet_len, struct sr_rt* lpm) {
+void cached_send(struct sr_instance* sr, uint8_t* packet, int len, struct sr_rt* matching_entry) {
 
-  sr_ethernet_hdr_t *eth_hdr = (sr_ethernet_hdr_t *)packet;
+    /* construct outgoing packet*/
+    sr_ethernet_hdr_t *eth_hdr = (sr_ethernet_hdr_t *)packet;
 
-  struct sr_arpentry *arpentry = sr_arpcache_lookup(&(sr->cache), lpm->gw.s_addr);
+    /* Look for matching MAC address in ARP cache to send this packet to*/
+    struct sr_arpentry *arpentry = sr_arpcache_lookup(&(sr->cache), matching_entry->gw.s_addr);
 
-  /* cache hit; grab MAC address (replaces old destination in ethernet header) and send the packet */
-  if (arpentry) {
-    struct sr_if* out_if = sr_get_interface(sr, lpm->interface);
-    memcpy(eth_hdr->ether_dhost, arpentry->mac, ETHER_ADDR_LEN);
-    memcpy(eth_hdr->ether_shost, out_if->addr, ETHER_ADDR_LEN);
-    printf("DEBUG: SEND PACKET (2).\n");
-    /*print_hdrs(packet, packet_len);*/
-    sr_send_packet(sr, packet, packet_len, lpm->interface);
-    free(arpentry);
-  }
-  /* cache miss; need an ARP request to grab MAC address */
-  else {
-    struct sr_arpreq *arpreq = sr_arpcache_queuereq(&(sr->cache), lpm->gw.s_addr, packet, packet_len, lpm->interface);
-    handle_arpreq(sr, arpreq);
-  }
+    if (arpentry) {
+        printf("ARP cache hit!!!\n");
+
+        /*set the MAC address of matching entry as the outgoing packet's destination*/
+        struct sr_if* out_if = sr_get_interface(sr, matching_entry->interface);
+        memcpy(eth_hdr->ether_dhost, arpentry->mac, ETHER_ADDR_LEN);
+        memcpy(eth_hdr->ether_shost, out_if->addr, ETHER_ADDR_LEN);
+        
+        sr_send_packet(sr, packet, len, matching_entry->interface);
+        free(arpentry);
+
+    } else {
+        printf("cache miss!!!\n");
+        /* send an ARP request to get the destination MAC addr for our outgoing packet */
+        struct sr_arpreq *arpreq = sr_arpcache_queuereq(&(sr->cache), matching_entry->gw.s_addr, packet, len, matching_entry->interface);
+        
+        handle_arpreq(sr, arpreq);
+    }
 }

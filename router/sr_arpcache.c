@@ -22,7 +22,7 @@ void handle_ARP(struct sr_instance* sr, uint8_t * packet, unsigned int len, char
 	struct sr_if *inf = sr_get_interface(sr, interface);
 	sr_arp_hdr_t *arp_hdr = (sr_arp_hdr_t *) (packet + sizeof(sr_ethernet_hdr_t));
 
-	if (!sr_get_if_from_ip(arp_hdr->ar_tip, sr->if_list)) {
+	if (!get_iface(arp_hdr->ar_tip, sr)) {
 		fprintf(stderr, "ERROR: This ARP packet is not for us\n");
 		return;
 	}
@@ -92,7 +92,7 @@ void send_arpreq(struct sr_instance *sr, struct sr_arpreq *request) {
 	struct sr_if *out_iface = sr_get_interface(sr, request->packets->iface);
 	
 	uint8_t broadcast_addr[ETHER_ADDR_LEN] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
-	populate_eth_hdr(ethernet_header, broadcast_addr, out_iface->addr, ethertype_arp);
+	gen_eth_hdr(ethernet_header, broadcast_addr, out_iface->addr, ethertype_arp);
 
 	struct sr_arp_hdr *arp_hdr = (struct sr_arp_hdr *)(packet + sizeof(sr_ethernet_hdr_t));
 
@@ -159,36 +159,53 @@ void sr_arpcache_sweepreqs(struct sr_instance *sr) {
 	}
 }
 
-/*
- * Fill in the information for an ARP header pointer passed in. 
+/**
+ * Fill in an arp header given its pointer. 
+ * @param arp_hdr      pointer to arp header to fill in
+ * @param hw_fmt       hardware address format
+ * @param protocol     ARP protocol type
+ * @param hw_len       hardware address length
+ * @param protocol_len protocol length
+ * @param opcode       ARP opcode type
+ * @param sha          sender's hardware address
+ * @param sip          sender's IP address
+ * @param tha          target's hardware address
+ * @param tip          target's IP address
  */
 void gen_arp_hdr(sr_arp_hdr_t * arp_hdr,
-					  unsigned short  ar_hrd,
-					  unsigned short  ar_pro,
-					  unsigned char   ar_hln,
-					  unsigned char   ar_pln,
-					  unsigned short  ar_op,
-					  unsigned char*  ar_sha,
-					  uint32_t        ar_sip,
-					  unsigned char*  ar_tha,
-					  uint32_t        ar_tip) {
+			  unsigned short  hw_fmt,
+			  unsigned short  protocol,
+			  unsigned char   hw_len,
+			  unsigned char   protocol_len,
+			  unsigned short  opcode,
+			  unsigned char*  sha,
+			  uint32_t        sip,
+			  unsigned char*  tha,
+			  uint32_t        tip) {
 
-	arp_hdr->ar_hrd = htons(ar_hrd);
-	arp_hdr->ar_pro = htons(ar_pro);
-	arp_hdr->ar_hln = ar_hln;
-	arp_hdr->ar_pln = ar_pln;
-	arp_hdr->ar_op = htons(ar_op);
-	arp_hdr->ar_sip = ar_sip;
-	arp_hdr->ar_tip = ar_tip;
-	memcpy(arp_hdr->ar_sha, ar_sha, ETHER_ADDR_LEN);
-	memcpy(arp_hdr->ar_tha, ar_tha, ETHER_ADDR_LEN);
+	printf("	in gen_arp_hdr()------------\n");
+
+	arp_hdr->ar_hrd = htons(hw_fmt);
+	arp_hdr->ar_pro = htons(protocol);
+	arp_hdr->ar_hln = hw_len;
+	arp_hdr->ar_pln = protocol_len;
+	arp_hdr->ar_op = htons(opcode);
+	arp_hdr->ar_sip = sip;
+	arp_hdr->ar_tip = tip;
+	memcpy(arp_hdr->ar_sha, sha, ETHER_ADDR_LEN);
+	memcpy(arp_hdr->ar_tha, tha, ETHER_ADDR_LEN);
 }
 
-/*
- * Contains Logic to Handle ARP Request
- * Create New Ethernet Header
- * Create New ARP Header
- * Sends the packet back to source
+
+
+/**
+ * Respond to an ARP op request by constructing an ARP reply to send back
+ * to to the sender through a given outgoing interface.
+ *
+ * @param sr          sr instance
+ * @param request_pkt incoming ARP request packet
+ * @param len         length of ARP request packet
+ * @param iface       interface this request packet was sent through
  */
 void handle_op_request (struct sr_instance* sr,
 						 uint8_t * request_pkt, 
@@ -202,7 +219,7 @@ void handle_op_request (struct sr_instance* sr,
 	struct sr_ethernet_hdr *request_eth_hdr = (struct sr_ethernet_hdr *)request_pkt;
 	struct sr_ethernet_hdr *reply_arp_hdr = (struct sr_ethernet_hdr *)reply_pkt;
 
-	populate_eth_hdr(reply_arp_hdr,
+	gen_eth_hdr(reply_arp_hdr,
 					request_eth_hdr->ether_shost, 
 					iface->addr, 
 					ethertype_arp);
@@ -210,15 +227,15 @@ void handle_op_request (struct sr_instance* sr,
 	struct sr_arp_hdr *arp_hdr = ((struct sr_arp_hdr *)(reply_pkt + sizeof(sr_ethernet_hdr_t)));
 	struct sr_arp_hdr *request_arp_hdr = ((struct sr_arp_hdr *)(request_pkt + sizeof(sr_ethernet_hdr_t)));
 	gen_arp_hdr(arp_hdr,
-					 arp_hrd_ethernet,
-					 ethertype_ip,
-					 ETHER_ADDR_LEN,
-					 4,
-					 arp_op_reply,
-					 iface->addr, 
-					 iface->ip,
-					 request_arp_hdr->ar_sha, 
-					 request_arp_hdr->ar_sip);
+			arp_hrd_ethernet,
+			ethertype_ip,
+			ETHER_ADDR_LEN,
+			4,
+			arp_op_reply,
+			iface->addr, 
+			iface->ip,
+			request_arp_hdr->ar_sha, 
+			request_arp_hdr->ar_sip);
 
 	sr_send_packet(sr, reply_pkt, reply_pkt_len, iface->name);
 

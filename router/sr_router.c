@@ -76,7 +76,7 @@ void sr_handlepacket(struct sr_instance* sr, uint8_t * packet, unsigned int len,
 	printf("*** -> Received packet of length %d \n",len);
 
 	/* fill in code here */
-	printf("IN sr_router.c: sr_handlepacket\n");
+	printf("IN sr_router.c: sr_handlepacket()-------------------\n");
 	
 	sr_ethernet_hdr_t *eth_hdr = (sr_ethernet_hdr_t *)packet;
 	uint16_t ether_type = ntohs(eth_hdr->ether_type);
@@ -86,7 +86,7 @@ void sr_handlepacket(struct sr_instance* sr, uint8_t * packet, unsigned int len,
 		handle_ARP(sr, packet, len, interface);
 	}
 	else if (ether_type == ethertype_ip) {
-		printf("Got an ETHERNET packet===============\n");
+		printf("	Got an ETHERNET packet===========\n");
 		handle_IP(sr, packet, len, interface);
 		
 	} /*end of handling ethertype_ip packet */
