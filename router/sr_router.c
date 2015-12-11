@@ -98,7 +98,7 @@ void sr_handlepacket(struct sr_instance* sr,
 			sr_arp_hdr_t *arp_hdr = (sr_arp_hdr_t *) (sizeof(sr_ethernet_hdr_t) + packet);
 			enum sr_arp_opcode arp_op_type = arp_hdr->ar_op;
 
-			if (sr_get_if_from_ip(arp_hdr->ar_tip, sr->if_list) == NULL) {
+			if (!sr_get_if_from_ip(arp_hdr->ar_tip, sr->if_list)) {
 				printf("ERROR: Invalid ARP Packet.\n");
 				return;
 			}
@@ -143,7 +143,7 @@ void sr_handlepacket(struct sr_instance* sr,
 				struct sr_arpreq *arpreq = sr_arpcache_insert(&(sr->cache), arp_hdr->ar_sha, arp_hdr->ar_sip);
 
 				struct sr_packet *curr_pkt = arpreq->packets;
-				while (curr_pkt != NULL) {
+				while (curr_pkt) {
 					uint8_t *curr_frame = curr_pkt->buf;
 					struct sr_packet *next_pkt = curr_pkt->next;
 					struct sr_if *interface = sr_get_interface(sr, curr_pkt->iface);
@@ -168,9 +168,8 @@ void sr_handlepacket(struct sr_instance* sr,
 
 			uint16_t expected_cksum = ip_hdr->ip_sum;
 			ip_hdr->ip_sum = 0;
-			int ip_hl = ip_hdr->ip_hl * 4;
 
-			uint16_t actual_cksum = cksum(ip_hdr, ip_hl);
+			uint16_t actual_cksum = cksum(ip_hdr, ip_hdr->ip_hl * 4);
 
 			if (actual_cksum != expected_cksum) {
 				printf("ERROR: checksum don't match.\n");
@@ -180,7 +179,7 @@ void sr_handlepacket(struct sr_instance* sr,
 				return;
 			} else {
 				ip_hdr->ip_sum = expected_cksum; 
-				if (sr_get_if_from_ip(ip_hdr->ip_dst, sr->if_list) == TRUE) {
+				if (sr_get_if_from_ip(ip_hdr->ip_dst, sr->if_list)) {
 					printf("DEBUG: INCOMING IP PACKET\n");
 					uint8_t protocol = ip_hdr->ip_p;
 
@@ -194,19 +193,19 @@ void sr_handlepacket(struct sr_instance* sr,
 							uint16_t expected_icmp_cksum = icmp_hdr->icmp_sum;
 							icmp_hdr->icmp_sum = 0;
 
-							uint16_t actual_icmp_checksum = cksum(icmp_hdr, ntohs(ip_hdr->ip_len) - ip_hl);
+							uint16_t actual_icmp_checksum = cksum(icmp_hdr, ntohs(ip_hdr->ip_len) - (ip_hdr->ip_hl * 4));
 
 							if (expected_icmp_cksum == actual_icmp_checksum) {
 								icmp_hdr->icmp_sum = expected_icmp_cksum; 
-								icmp_handler(sr, ICMP_ECHOREPLY, packet, len, 0);
+								icmp_handler(sr, packet, len, ICMP_ECHOREPLY, 0);
 							}
 							else {
-								printf("ERROR: checksum mismatch on incoming ICMP echo request packet.\n");
+								printf("ERROR: Checksum do not match on ICMP echo request packet.\n");
 							}
 						}
 					}
 					else if (protocol == ip_protocol_udp || protocol == ip_protocol_tcp) {
-						icmp_handler(sr, ICMP_PORTUNREACHABLE, packet, 0, 0);
+						icmp_handler(sr, packet, 0, ICMP_PORTUNREACHABLE, 0);
 					}
 					else { /* ignore packet */
 						printf("ERROR: Unsupported IP protocol type.\n");

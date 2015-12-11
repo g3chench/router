@@ -42,8 +42,8 @@ void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req) {
 		if (req->times_sent >= 5) {
 			struct sr_packet *pkt_pending = req->packets;
 			struct sr_if *interface = sr_get_interface(sr, pkt_pending->iface);
-			while (pkt_pending != NULL) {
-				icmp_handler(sr, ICMP_HOSTUNREACHABLE, pkt_pending->buf, 0, interface->ip);
+			while (pkt_pending) {
+				icmp_handler(sr, pkt_pending->buf, 0, ICMP_HOSTUNREACHABLE, interface->ip);
 				pkt_pending = pkt_pending->next;
 			}
 			sr_arpreq_destroy(&(sr->cache), req);
