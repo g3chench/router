@@ -28,38 +28,45 @@ void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req) {
 		}
 		else {
 			int packet_len = sizeof(sr_ethernet_hdr_t) + sizeof(sr_arp_hdr_t);
-			uint8_t *packet = malloc(packet_len);
+			uint8_t *pkt = malloc(packet_len);
 
-			struct sr_ethernet_hdr *ethernet_header = (struct sr_ethernet_hdr *)packet;
-			struct sr_if *if_out = sr_get_interface(sr, req->packets->iface);
-			uint8_t broadcast_addr[ETHER_ADDR_LEN] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
-			enum sr_ethertype eth_type;
-			enum sr_ethertype arp_type;
-			eth_type = ethertype_arp;
-			arp_type = ethertype_ip;
-			populate_eth_hdr(ethernet_header, broadcast_addr, if_out->addr, eth_type);
+			struct sr_ethernet_hdr *eth_hdr = (struct sr_ethernet_hdr *)pkt;
+			struct sr_if *interface = sr_get_interface(sr, req->packets->iface);
+			uint8_t hrd_addr[ETHER_ADDR_LEN] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+			enum sr_ethertype eth_arp = ethertype_arp;
+			enum sr_ethertype eth_ip = ethertype_ip;
+			populate_eth_hdr(eth_hdr, hrd_addr, interface->addr, eth_arp);
 
-			struct sr_arp_hdr *arp_header = (struct sr_arp_hdr *)(packet + sizeof(sr_ethernet_hdr_t));
-			enum sr_arp_hrd_fmt arp_hdr_fmt;
-			arp_hdr_fmt = arp_hrd_ethernet;
-			enum sr_arp_opcode opcode;
-			opcode = arp_op_request;
-			populate_arp_hdr(arp_header, 
-							arp_hdr_fmt, 
-							arp_type, 
-							ETHER_ADDR_LEN, 
-							4, 
-							opcode, 
-							if_out->addr,
-							if_out->ip, 
-							broadcast_addr,
-							req->ip);
+			struct sr_arp_hdr *arp_hdr = (struct sr_arp_hdr *)(sizeof(sr_ethernet_hdr_t) + pkt);
+			enum sr_arp_hrd_fmt hrd_eth = arp_hrd_ethernet;
+			enum sr_arp_op_req op_req = arp_op_request;
+
+
+			/* format of hardware address   */
+			arp_hdr->ar_hrd = htons(hrd_eth);
+			/* format of protocol address   */
+			arp_hdr->ar_pro = htons(eth_ip);
+			/* length of hardware address   */
+			arp_hdr->ar_hln = ETHER_ADDR_LEN;
+			/* length of protocol address   */
+			arp_hdr->ar_pln = 4;
+			/* ARP op_req (command)         */
+			arp_hdr->ar_op = htons(op_req);
+			/* sender IP address            */
+			arp_hdr->ar_sip = interface->ip;
+			/* target IP address            */
+			arp_hdr->ar_tip = req->ip;
+			/* sender hardware address      */
+			memcpy(arp_hdr->ar_sha, interface->addr, ETHER_ADDR_LEN);
+			/* target hardware address      */
+			memcpy(arp_hdr->ar_tha, hrd_addr, ETHER_ADDR_LEN);
+
 
 			printf("DEBUG: SEND PACKET (3).\n");
 			/*print_hdrs(packet, packet_len);*/
 
-			sr_send_packet(sr, packet, packet_len, if_out->name);
-			free(packet);
+			sr_send_packet(sr, pkt, packet_len, interface->name);
+			free(pkt);
 			req->sent = now;
 			req->times_sent++;
 		}
@@ -104,7 +111,7 @@ void populate_arp_hdr(sr_arp_hdr_t * arp_hdr,
 	arp_hdr->ar_hln = ar_hln;
 	/* length of protocol address   */
 	arp_hdr->ar_pln = ar_pln;
-	/* ARP opcode (command)         */
+	/* ARP op_req (command)         */
 	arp_hdr->ar_op = htons(ar_op);
 	/* sender IP address            */
 	arp_hdr->ar_sip = ar_sip;
