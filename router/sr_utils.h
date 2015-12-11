@@ -57,9 +57,9 @@ void populate_icmp_hdr(int icmp_type,
 					uint8_t *original_packet);
 
 void icmp_handler (struct sr_instance* sr,
-				int icmp_type,
 				uint8_t* original_packet,
 				int original_len,
+				int icmp_type,
 				uint32_t sender_ip);
 
 void lookup_and_send(struct sr_instance* sr,
