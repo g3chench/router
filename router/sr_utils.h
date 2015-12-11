@@ -56,7 +56,7 @@ void populate_icmp_hdr(int icmp_type,
 					uint8_t *buf, 
 					uint8_t *original_packet);
 
-void handle_ICMP (struct sr_instance* sr,
+void icmp_handler (struct sr_instance* sr,
 				int icmp_type,
 				uint8_t* original_packet,
 				int original_len,
