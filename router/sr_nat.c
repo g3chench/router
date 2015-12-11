@@ -393,9 +393,6 @@ void handle_nat(struct sr_instance* sr,
           free(temp_hdr_buf);
           free(map);
           forward_IP_packet(sr, packet, len);
-
-          free(map);
-          forward_IP_packet(sr, packet, len);
         }
 
       } else if (tcp_hdr->ctrl_flags & SYN_FLAG) { /* Unsolicited inbound syn (most likely for simultaneous open) */
