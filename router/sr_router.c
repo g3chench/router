@@ -193,7 +193,7 @@ void sr_handlepacket(struct sr_instance* sr,
 
 							uint16_t expected_icmp_cksum = icmp_hdr->icmp_sum;
 							icmp_hdr->icmp_sum = 0;
-							
+
 							uint16_t actual_icmp_checksum = cksum(icmp_hdr, ntohs(ip_hdr->ip_len) - ip_hl);
 
 							if (expected_icmp_cksum == actual_icmp_checksum) {
@@ -205,7 +205,7 @@ void sr_handlepacket(struct sr_instance* sr,
 							}
 						}
 					}
-					else if (protocol == protocol_udp || protocol == protocol_tcp) {
+					else if (protocol == ip_protocol_udp || protocol == ip_protocol_tcp) {
 						icmp_handler(sr, ICMP_PORTUNREACHABLE, packet, 0, 0);
 					}
 					else { /* ignore packet */
