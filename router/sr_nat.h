@@ -56,6 +56,7 @@ struct sr_nat_mapping {
 struct sr_nat {
   /* add any fields here */
   struct sr_nat_mapping *mappings;
+  struct sr_instance *sr;
   int icmp_query_timeout;
   int tcp_est_idle_timeout;
   int tcp_trans_idle_timeout;

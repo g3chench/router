@@ -129,6 +129,7 @@ int main(int argc, char **argv)
         nat->icmp_query_timeout = icmp_query_timeout;
         nat->tcp_est_idle_timeout = tcp_est_idle_timeout;
         nat->tcp_trans_idle_timeout = tcp_trans_idle_timeout;
+        nat->sr = &sr;
         sr.nat = nat;
     } else {
         sr.nat = NULL;
