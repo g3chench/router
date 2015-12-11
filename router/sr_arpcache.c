@@ -39,7 +39,7 @@ void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req) {
 
 			struct sr_arp_hdr *arp_hdr = (struct sr_arp_hdr *)(sizeof(sr_ethernet_hdr_t) + pkt);
 			enum sr_arp_hrd_fmt hrd_eth = arp_hrd_ethernet;
-			enum sr_arp_op_req op_req = arp_op_request;
+			enum sr_arp_op_req arp_op_req = arp_op_request;
 
 
 			/* format of hardware address   */
@@ -51,7 +51,7 @@ void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req) {
 			/* length of protocol address   */
 			arp_hdr->ar_pln = 4;
 			/* ARP op_req (command)         */
-			arp_hdr->ar_op = htons(op_req);
+			arp_hdr->ar_op = htons(arp_op_req);
 			/* sender IP address            */
 			arp_hdr->ar_sip = interface->ip;
 			/* target IP address            */
