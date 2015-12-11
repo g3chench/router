@@ -176,3 +176,27 @@ void sr_print_routing_entry(struct sr_rt* entry)
     printf("%s\n",entry->interface);
 
 } /* -- sr_print_routing_entry -- */
+
+/*--------------------------------------------------------------------
+ * Returns the entry in the routing table rtable that has the longest
+ * prefix match with the given ip, or NULL if there is no match.
+ *------------------------------------------------------------------*/
+struct sr_rt *LPM(uint32_t ip, struct sr_rt* rtable) {
+        struct sr_rt* longest_match = NULL;
+        struct sr_rt* current_value = NULL;
+        /*root of rtable linked list*/
+        current_value = rtable; 
+        while (current_value){
+            /* Check if prefixes match */
+            if ((ntohl(current_value->dest.s_addr) & ntohl(current_value->mask.s_addr)) 
+            == (ntohl(ip) & ntohl(current_value->mask.s_addr))){
+
+                if (longest_match == NULL || current_value->mask.s_addr > longest_match->mask.s_addr){
+                    longest_match = current_value;
+                }
+            }
+            current_value = current_value->next;
+        }
+        return longest_match;
+}
+

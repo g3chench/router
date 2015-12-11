@@ -192,3 +192,20 @@ void sr_print_if(struct sr_if* iface)
 	Debug("\n");
 	Debug("\tinet addr %s\n",inet_ntoa(ip_addr));
 } /* -- sr_print_if -- */
+
+/*-------------------------------------------------------------------------
+ * Return the interface record in if_list that has the given ip. Return
+ * NULL if not found.
+ *-----------------------------------------------------------------------*/
+struct sr_if* sr_get_if_from_ip (uint32_t ip, struct sr_if* if_list) {
+	struct sr_if *interface = if_list;
+
+	while (interface) {
+		if (ip == interface->ip) {
+			return interface;
+		}
+		interface = interface->next;
+	}
+
+	return NULL;
+}

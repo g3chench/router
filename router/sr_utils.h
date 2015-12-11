@@ -24,12 +24,15 @@
  * SUCH DAMAGE.
  *
  */
-#include <stdint.h>
-#include "sr_rt.h"
 
 #ifndef SR_UTILS_H
 #define SR_UTILS_H
 
+#define ICMP_ECHOREPLY       1
+#define ICMP_NETUNREACHABLE  2
+#define ICMP_HOSTUNREACHABLE 3
+#define ICMP_PORTUNREACHABLE 4
+#define ICMP_TIMEEXCEEDED    5
 #define INIT_TTL 255
 
 uint16_t cksum(const void *_data, int len);
@@ -49,7 +52,23 @@ void print_hdr_arp(uint8_t *buf);
 /* prints all headers, starting from eth */
 void print_hdrs(uint8_t *buf, uint32_t length);
 
-void cached_send(struct sr_instance* sr, uint8_t* packet, int packet_len, struct sr_rt* lpm);
+void populate_icmp_hdr(int icmp_type,
+					uint8_t *buf, 
+					uint8_t *original_packet);
 
+void handle_ICMP (struct sr_instance* sr,
+				int icmp_type,
+				uint8_t* original_packet,
+				int original_len,
+				uint32_t sender_ip);
+
+void lookup_and_send(struct sr_instance* sr,
+				uint8_t* packet,
+				int packet_len,
+				struct sr_rt* lpm);
+
+void forward_ip_packet(struct sr_instance* sr,
+                       uint8_t * packet/* lent */,
+                       unsigned int packet_len);
 
 #endif /* -- SR_UTILS_H -- */
