@@ -66,10 +66,14 @@ int main(int argc, char **argv)
     unsigned int topo = DEFAULT_TOPO;
     char *logfile = 0;
     struct sr_instance sr;
+    int nat_enabled = 0;
+    int icmp_query_timeout = 60;
+    int tcp_est_idle_timeout = 7440;
+    int tcp_trans_idle_timeout = 300;
 
     printf("Using %s\n", VERSION_INFO);
 
-    while ((c = getopt(argc, argv, "hs:v:p:u:t:r:l:T:")) != EOF)
+    while ((c = getopt(argc, argv, "hs:v:p:u:t:r:l:T:n:")) != EOF)
     {
         switch (c)
         {
@@ -101,11 +105,34 @@ int main(int argc, char **argv)
             case 'T':
                 template = optarg;
                 break;
+            case 'n':
+                nat_enabled = 1;
+                break;
+            case 'I':
+                icmp_query_timeout = atoi((char * ) optarg);
+                break;
+            case 'E':
+                tcp_est_idle_timeout = atoi((char * ) optarg);
+                break;
+            case 'R':
+                tcp_trans_idle_timeout = atoi((char * ) optarg);
+                break;
         } /* switch */
     } /* -- while -- */
 
     /* -- zero out sr instance -- */
     sr_init_instance(&sr);
+
+    /* -- set up NAT settings -- */
+    if (nat_enabled) {
+        struct sr_nat *nat = (struct sr_nat *)(malloc(sizeof(struct sr_nat)));
+        nat->icmp_query_timeout = icmp_query_timeout;
+        nat->tcp_est_idle_timeout = tcp_est_idle_timeout;
+        nat->tcp_trans_idle_timeout = tcp_trans_idle_timeout;
+        sr.nat = nat;
+    } else {
+        sr.nat = NULL;
+    }
 
     /* -- set up routing table from file -- */
     if(template == NULL) {

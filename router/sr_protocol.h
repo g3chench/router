@@ -88,7 +88,21 @@ struct sr_icmp_hdr {
 typedef struct sr_icmp_hdr sr_icmp_hdr_t;
 
 
-/* Structure of a type3 ICMP header
+/* Structure of a type 0 ICMP header
+ */
+struct sr_icmp_t0_hdr {
+  uint8_t icmp_type;
+  uint8_t icmp_code;
+  uint16_t icmp_sum;
+  uint16_t id;
+  uint16_t seqno;
+  uint8_t data[ICMP_DATA_SIZE];
+
+} __attribute__ ((packed)) ;
+typedef struct sr_icmp_t0_hdr sr_icmp_t0_hdr_t;
+
+
+/* Structure of a type 3 ICMP header
  */
 struct sr_icmp_t3_hdr {
   uint8_t icmp_type;
@@ -187,5 +201,37 @@ struct sr_arp_hdr
 typedef struct sr_arp_hdr sr_arp_hdr_t;
 
 #define sr_IFACE_NAMELEN 32
+
+
+#define URG_FLAG 0x0020
+#define ACK_FLAG 0x0010
+#define PSH_FLAG 0x0008
+#define RST_FLAG 0x0004
+#define SYN_FLAG 0x0002
+#define FIN_FLAG 0x0001
+
+struct sr_tcp_hdr
+{
+    uint16_t src_port;
+    uint16_t dst_port;
+    uint32_t seqno;
+    uint32_t ackno;
+    uint8_t offset; /* Offset + reserved bits; combined because we don't need them. */
+    uint8_t ctrl_flags;
+    uint16_t window;
+    uint16_t tcp_sum;
+    uint16_t urg_ptr;
+} __attribute__ ((packed));
+typedef struct sr_tcp_hdr sr_tcp_hdr_t;
+
+struct sr_tcp_temp_hdr /* For calculating TCP checksum */
+{
+  uint32_t ip_src;
+  uint32_t ip_dst;
+  uint8_t blank;
+  uint8_t ip_p;
+  uint16_t length;
+} __attribute__ ((packed));
+typedef struct sr_tcp_temp_hdr sr_tcp_temp_hdr_t;
 
 #endif /* -- SR_PROTOCOL_H -- */

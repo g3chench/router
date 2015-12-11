@@ -8,7 +8,7 @@
 #include "sr_utils.h"
 #include "sr_rt.h"
 #include "sr_ip.h"
-
+#include "sr_nat.h"
 
 /**
  * Handle an IP packet:
@@ -41,6 +41,12 @@ void handle_IP (struct sr_instance* sr, uint8_t * packet, unsigned int len, char
       return;
     }
     ip_hdr->ip_sum = expected_cksum;
+
+    /* if NAT is enabled */
+    if (sr->nat != NULL) {
+      handle_nat(sr, packet, len, interface);
+      return;
+    }
 
     /*printf("Passed IP packet sanity checks!\n");*/
     /****This packet is for us!*******/
@@ -78,36 +84,40 @@ void handle_IP (struct sr_instance* sr, uint8_t * packet, unsigned int len, char
 
     /******PACKET NOT FOR US, FORWARD IT TO NEXT HOP*/
     } else {
-        fprintf(stderr, "    THIS PACKET AIN'T FOR US!\n    Forward it to the next router!\n");
-        printf("    in forward_ip_pkt()------------\n");
-
-        sr_ip_hdr_t *ip_hdr = (sr_ip_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t));
-
-        if (ip_hdr->ip_ttl <= 1) {
-            fprintf(stderr, "packet's TTL expired! Send ICMP TIME EXCEEDED...\n");
-            handle_ICMP(sr, TIME_EXCEEDED, packet, 0, 0);
-            return;
-        }
-
-        /*reconstruct ip header*/
-        ip_hdr->ip_ttl--;
-        ip_hdr->ip_sum = 0;
-        ip_hdr->ip_sum = cksum(ip_hdr, ip_hdr->ip_hl * 4);
-
-        printf("find outgoing interface to forward this packet through...\n");
-        struct sr_rt *matching_entry = lpm(ip_hdr->ip_dst, sr->routing_table);
-        if (!matching_entry) {
-            fprintf(stderr, "LPM could not find a matching RT entry!\n Send ICMP NET UNREACHABLE packet\n");
-            handle_ICMP(sr, NET_UNREACHABLE, packet, 0, 0);
-            return;
-        }
-
-        /* send IP packet through outgoing interface*/
-        cached_send(sr, packet, len, matching_entry);
+      forward_IP_packet(sr, packet, len);
     }
 }
 
+void forward_IP_packet(struct sr_instance* sr,
+                       uint8_t * packet,
+                       unsigned int len) {
+  printf("    THIS PACKET AIN'T FOR US!\n    Forward it to the next router!\n");
+  printf("    in forward_ip_pkt()------------\n");
 
+  sr_ip_hdr_t *ip_hdr = (sr_ip_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t));
+
+  if (ip_hdr->ip_ttl <= 1) {
+      fprintf(stderr, "packet's TTL expired! Send ICMP TIME EXCEEDED...\n");
+      handle_ICMP(sr, TIME_EXCEEDED, packet, 0, 0);
+      return;
+  }
+
+  /*reconstruct ip header*/
+  ip_hdr->ip_ttl--;
+  ip_hdr->ip_sum = 0;
+  ip_hdr->ip_sum = cksum(ip_hdr, ip_hdr->ip_hl * 4);
+
+  printf("find outgoing interface to forward this packet through...\n");
+  struct sr_rt *matching_entry = lpm(ip_hdr->ip_dst, sr->routing_table);
+  if (!matching_entry) {
+      fprintf(stderr, "LPM could not find a matching RT entry!\n Send ICMP NET UNREACHABLE packet\n");
+      handle_ICMP(sr, NET_UNREACHABLE, packet, 0, 0);
+      return;
+  }
+
+  /* send IP packet through outgoing interface*/
+  cached_send(sr, packet, len, matching_entry);
+}
 
 /**
  * Return the interface that corresponds to the given IP address. 

@@ -19,7 +19,7 @@
 #include "sr_icmp.h"
 #include "sr_arpcache.h"
 #include "sr_ip.h"
-
+#include "sr_nat.h"
 
 /* we dont like this debug , but what to do for varargs ? */
 #ifdef _DEBUG_
@@ -59,6 +59,7 @@ struct sr_instance
     struct sr_arpcache cache;   /* ARP cache */
     pthread_attr_t attr;
     FILE* logfile;
+    struct sr_nat *nat; /* NULL if NAT is disabled */
 };
 
 /* -- sr_main.c -- */
