@@ -84,7 +84,7 @@ void sr_handlepacket(struct sr_instance* sr,
 
 	printf("*** -> Received packet of length %d \n",len);
 
-	struct sr_if *inf = sr_get_interface(sr, interface);
+	struct sr_if *new_interface = sr_get_interface(sr, interface);
 
 	sr_ethernet_hdr_t *eth_hdr = (sr_ethernet_hdr_t *)packet;
 
@@ -94,18 +94,16 @@ void sr_handlepacket(struct sr_instance* sr,
 
 		case ethertype_arp:
 			printf("DEBUG: ARP PACKET RECEIVED.\n");
-			/* Jump past ethernet header to point at ARP header */
-			sr_arp_hdr_t *arp_hdr = (sr_arp_hdr_t *) (packet + sizeof(sr_ethernet_hdr_t));
-			enum sr_arp_opcode arp_type;
-			arp_type = arp_hdr->ar_op;
+			sr_arp_hdr_t *arp_hdr = (sr_arp_hdr_t *) (sizeof(sr_ethernet_hdr_t) + packet);
+			enum sr_arp_opcode arp_type = arp_hdr->ar_op;
 
 			if (!sr_get_if_from_ip(arp_hdr->ar_tip, sr->if_list)) {
-				printf("ERROR: ARP packet not for us.\n");
+				printf("ERROR: Invalid ARP Packet.\n");
 				return;
 			}
 
 			if (arp_type == htons(arp_op_request)) {
-				respond_to_arpreq(sr, packet, len, inf);
+				respond_to_arpreq(sr, packet, len, new_interface);
 			}
 			else if (arp_type == htons(arp_op_reply)) {
 				printf("DEBUG: INCOMING ARP REPLY PACKET\n");
