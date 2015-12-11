@@ -51,10 +51,10 @@ int sr_nat_destroy(struct sr_nat *nat) {  /* Destroys the nat (free memory) */
 
 }
 
-void *sr_nat_timeout(void *sr_ptr) {  /* Periodic Timout handling */
+void *sr_nat_timeout(void *nat_ptr) {  /* Periodic Timout handling */
 
-  struct sr_instance *sr = (struct sr_instance *)sr_ptr;
-  struct sr_nat *nat = sr->nat;
+  struct sr_nat *nat = (struct sr_nat *)nat_ptr;
+  struct sr_instance *sr = nat->sr;
   
   while (1) {
     sleep(1.0);
