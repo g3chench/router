@@ -110,7 +110,7 @@ void sr_handlepacket(struct sr_instance* sr,
 				enum sr_ethertype eth_arp = ethertype_arp;
 				enum sr_ethertype eth_ip = ethertype_ip;
 				memcpy(eth_hdr_resp->ether_dhost, eth_hdr_reply->ether_shost, ETHER_ADDR_LEN);
-				memcpy(eth_hdr_resp->ether_shost, new_inf->addr, ETHER_ADDR_LEN);
+				memcpy(eth_hdr_resp->ether_shost, new_interface->addr, ETHER_ADDR_LEN);
 				eth_hdr_resp->ether_type = htons(eth_arp);
 				
 				struct sr_arp_hdr *arp_hdr_resp = ((struct sr_arp_hdr *)(sizeof(sr_ethernet_hdr_t) + pkt_resp));
@@ -124,14 +124,14 @@ void sr_handlepacket(struct sr_instance* sr,
 				arp_hdr_resp->ar_hln = ETHER_ADDR_LEN;
 				arp_hdr_resp->ar_pln = 4;
 				arp_hdr_resp->ar_op = htons(opcode);
-				arp_hdr_resp->ar_sip = new_inf->ip;
+				arp_hdr_resp->ar_sip = new_interface->ip;
 				arp_hdr_resp->ar_tip = arp_hdr_reply->ar_sip;
-				memcpy(arp_hdr_resp->ar_sha, new_inf->addr, ETHER_ADDR_LEN);
+				memcpy(arp_hdr_resp->ar_sha, new_interface->addr, ETHER_ADDR_LEN);
 				memcpy(arp_hdr_resp->ar_tha, arp_hdr_reply->ar_sha, ETHER_ADDR_LEN);				 	
 
 
 				/* Send a reply */
-				sr_send_packet(sr, pkt_resp, sizeof(sr_arp_hdr_t) + sizeof(sr_ethernet_hdr_t), new_inf->name);
+				sr_send_packet(sr, pkt_resp, sizeof(sr_arp_hdr_t) + sizeof(sr_ethernet_hdr_t), new_interface->name);
 
 				/* Free after Packet is Sent */
 				free(pkt_resp);
