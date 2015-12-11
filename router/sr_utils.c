@@ -265,8 +265,8 @@ void icmp_handler (struct sr_instance* sr,
                 uint32_t icmp_sip){
 
   sr_ip_hdr_t *ip_hdr = (sr_ip_hdr_t *)(sizeof(sr_ethernet_hdr_t) + pkt);
-  struct sr_if* interface = sr_get_interface(sr, lpm->interface);
   struct sr_rt *rt = LPM(ip_hdr->ip_src, sr->routing_table);
+  struct sr_if* interface = sr_get_interface(sr, rt->interface);
   
   if (!rt) {
     printf("ERROR: Invalid LPM\n");
