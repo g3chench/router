@@ -321,7 +321,7 @@ void forward_ip_packet(struct sr_instance* sr,
   ip_hdr->ip_ttl--;
   if (ip_hdr->ip_ttl < 1) {
     printf("TTL of packet we have to forward is 0. Sending Time Exceeded ICMP.\n");
-    icmp_handler(sr, ICMP_TIMEEXCEEDED, packet, 0, 0);
+    icmp_handler(sr, packet, 0, ICMP_TIMEEXCEEDED, 0);
     return;
   }
   /* Recalculate checksum because we modified the ttl in the header */
@@ -331,7 +331,7 @@ void forward_ip_packet(struct sr_instance* sr,
   struct sr_rt *lpm = LPM(ip_hdr->ip_dst, sr->routing_table);
   if (!lpm) {
     /*printf("Sending ICMP net unreachable.\n");*/
-    icmp_handler(sr, ICMP_NETUNREACHABLE, packet, 0, 0);
+    icmp_handler(sr, packet, 0, ICMP_NETUNREACHABLE, 0);
     return;
   }
 
