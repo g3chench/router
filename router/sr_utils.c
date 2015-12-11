@@ -215,8 +215,8 @@ void populate_ip_hdr(struct sr_ip_hdr *ip_hdr, uint16_t data_len, uint8_t protoc
   This function populates ICMP header. 
 */
 void populate_icmp_hdr(int icmp_type, uint8_t *buf, uint8_t *pkt){
-	sr_ip_hdr_t *ip_hdr = (sr_ip_hdr_t *)(buf + sizeof(sr_ethernet_hdr_t));
-	int ip_hl = ip_hdr->ip_hl * 4;
+	sr_ip_hdr_t *new_ip_hdr = (sr_ip_hdr_t *)(buf + sizeof(sr_ethernet_hdr_t));
+	int ip_hl = new_ip_hdr->ip_hl * 4;
 
   sr_ip_hdr_t *ip_hdr = (sr_ip_hdr_t *)(pkt + sizeof(sr_ethernet_hdr_t));
 	
@@ -225,7 +225,7 @@ void populate_icmp_hdr(int icmp_type, uint8_t *buf, uint8_t *pkt){
     icmp_hdr->icmp_type = 0;
     icmp_hdr->icmp_code = 0;
     icmp_hdr->icmp_sum = 0x0000;
-    icmp_hdr->icmp_sum = cksum(icmp_hdr, ntohs(ip_hdr->ip_len) - ip_hl);
+    icmp_hdr->icmp_sum = cksum(icmp_hdr, ntohs(new_ip_hdr->ip_len) - ip_hl);
   }
   else {
     sr_icmp_t3_hdr_t *icmp_hdr = (sr_icmp_t3_hdr_t *)(buf + sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t));
@@ -253,7 +253,7 @@ void populate_icmp_hdr(int icmp_type, uint8_t *buf, uint8_t *pkt){
     icmp_hdr->next_mtu = 0;
     memcpy(icmp_hdr->data, ip_hdr, ICMP_DATA_SIZE);
     icmp_hdr->icmp_sum = 0;
-    icmp_hdr->icmp_sum = cksum(icmp_hdr, ntohs(ip_hdr->ip_len) - ip_hl);
+    icmp_hdr->icmp_sum = cksum(icmp_hdr, ntohs(new_ip_hdr->ip_len) - ip_hl);
   }
 }
 
