@@ -277,8 +277,8 @@ void icmp_handler (struct sr_instance* sr /* lent */,
   * not specified (for all other ICMP types), we use the default source IP (IP of interface
   * of next hop) */
   if (!sender_ip && icmp_type != ICMP_ECHOREPLY) {
-    struct sr_if* out_if = sr_get_interface(sr, lpm->interface);
-    sender_ip = out_if->ip;
+    struct sr_if* interface = sr_get_interface(sr, lpm->interface);
+    sender_ip = interface->ip;
   }
 
   if (icmp_type == ICMP_ECHOREPLY) { /* Type 0 header */
@@ -315,25 +315,21 @@ void icmp_handler (struct sr_instance* sr /* lent */,
 }
 
 
-void lookup_and_send(struct sr_instance* sr, uint8_t* packet, int packet_len, struct sr_rt* lpm) {
+void lookup_and_send(struct sr_instance* sr, uint8_t* pkt, int len, struct sr_rt* rt) {
 
+  struct sr_arpentry *arpentry = sr_arpcache_lookup(&(sr->cache), rt->gw.s_addr);
   sr_ethernet_hdr_t *eth_hdr = (sr_ethernet_hdr_t *)packet;
 
-  struct sr_arpentry *arpentry = sr_arpcache_lookup(&(sr->cache), lpm->gw.s_addr);
-
-  /* cache hit; grab MAC address (replaces old destination in ethernet header) and send the packet */
   if (arpentry) {
-    struct sr_if* out_if = sr_get_interface(sr, lpm->interface);
+    struct sr_if* interface = sr_get_interface(sr, rt->interface);
     memcpy(eth_hdr->ether_dhost, arpentry->mac, ETHER_ADDR_LEN);
-    memcpy(eth_hdr->ether_shost, out_if->addr, ETHER_ADDR_LEN);
-    printf("DEBUG: SEND PACKET (2).\n");
+    memcpy(eth_hdr->ether_shost, interface->addr, ETHER_ADDR_LEN);
+    printf("2...DEBUG: SEND PACKET.\n");
     /*print_hdrs(packet, packet_len);*/
-    sr_send_packet(sr, packet, packet_len, lpm->interface);
+    sr_send_packet(sr, pkt, len, rt->interface);
     free(arpentry);
   }
-  /* cache miss; need an ARP request to grab MAC address */
   else {
-    struct sr_arpreq *arpreq = sr_arpcache_queuereq(&(sr->cache), lpm->gw.s_addr, packet, packet_len, lpm->interface);
-    handle_arpreq(sr, arpreq);
+    handle_arpreq(sr_arpcache_queuereq(&(sr->cache), rt->gw.s_addr, pkt, len, rt->interface), arpreq);
   }
 }
