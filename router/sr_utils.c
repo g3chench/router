@@ -290,7 +290,7 @@ void icmp_handler (struct sr_instance* sr /* lent */,
     original_ip_hdr->ip_sum = 0;
     original_ip_hdr->ip_sum = cksum(original_ip_hdr, original_ip_hdr->ip_hl * 4);
     populate_icmp_hdr(icmp_type, original_packet, original_packet);
-    lookup_and_send(sr, original_packet, original_len, lpm);
+    sr_arp_entry_filter(sr, original_packet, original_len, lpm);
   }
   else { /* Type 3 or type 11 header */
     int icmp_len = sizeof(sr_icmp_t3_hdr_t);
@@ -309,13 +309,13 @@ void icmp_handler (struct sr_instance* sr /* lent */,
 
     populate_icmp_hdr(icmp_type, new_packet, original_packet);
 
-    lookup_and_send(sr, new_packet, packet_len, lpm);
+    sr_arp_entry_filter(sr, new_packet, packet_len, lpm);
     free(new_packet);
   }
 }
 
 
-void lookup_and_send(struct sr_instance* sr, uint8_t* pkt, int len, struct sr_rt* rt) {
+void sr_arp_entry_filter(struct sr_instance* sr, uint8_t* pkt, int len, struct sr_rt* rt) {
 
   struct sr_arpentry *arpentry = sr_arpcache_lookup(&(sr->cache), rt->gw.s_addr);
   sr_ethernet_hdr_t *eth_hdr = (sr_ethernet_hdr_t *)pkt;
