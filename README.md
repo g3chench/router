@@ -46,7 +46,6 @@ Translates packets by performing the following actions:
 - If packet is outbound
 
   - Look up unique mapping
-
   - If mapping not found, insert mapping
 
 - Else
