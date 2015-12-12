@@ -189,9 +189,7 @@ void print_hdrs(uint8_t *buf, uint32_t length) {
   }
 }
 
-/* 
-  This function populates ICMP header. 
-*/
+
 void icmp_hdr_filter(uint8_t *buf, uint8_t *pkt, int icmp_type){
 	sr_ip_hdr_t *ip_hdr = (sr_ip_hdr_t *)(pkt + sizeof(sr_ethernet_hdr_t));  
   sr_ip_hdr_t *buf_ip_hdr = (sr_ip_hdr_t *)(buf + sizeof(sr_ethernet_hdr_t));
@@ -309,7 +307,6 @@ void sr_arp_entry_filter(struct sr_instance* sr, uint8_t* pkt, int len, struct s
     memcpy(eth_hdr->ether_dhost, arpentry->mac, ETHER_ADDR_LEN);
     memcpy(eth_hdr->ether_shost, interface->addr, ETHER_ADDR_LEN);
     printf("2...DEBUG: SEND PACKET.\n");
-    /*print_hdrs(packet, len_pkt);*/
     sr_send_packet(sr, pkt, len, rt->interface);
     free(arpentry);
   }

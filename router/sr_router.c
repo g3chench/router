@@ -130,18 +130,13 @@ void sr_handlepacket(struct sr_instance* sr,
 				memcpy(arp_hdr_resp->ar_tha, arp_hdr_reply->ar_sha, ETHER_ADDR_LEN);				 	
 
 
-				/* Send a reply */
 				sr_send_packet(sr, pkt_resp, sizeof(sr_arp_hdr_t) + sizeof(sr_ethernet_hdr_t), new_interface->name);
 
-				/* Free after Packet is Sent */
 				free(pkt_resp);
 			}
 			else if (arp_op_type == htons(arp_op_reply)) {
 				printf("DEBUG: INCOMING ARP REPLY PACKET\n");
-				/* sr_arpcache_insert inserts the reply into the cache and return the corresponding request entry */
 				struct sr_arpreq *arpreq = sr_arpcache_insert(&(sr->cache), arp_hdr->ar_sha, arp_hdr->ar_sip);
-				/* Go through linked list of all packets waiting on the ARP request we just got a reply to,
-				* fill in the MAC address in each packet's frame, and send the packet */
 				struct sr_packet *curr_pkt = arpreq->packets;
 				while (curr_pkt) {
 					uint8_t *frame = curr_pkt->buf;
