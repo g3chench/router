@@ -12,6 +12,7 @@
 #include "sr_protocol.h"
 #include "sr_utils.h"
 #include "sr_rt.h"
+#include "sr_icmp.h"
 
 /* 
   This function gets called every second. For each request sent out, we keep
