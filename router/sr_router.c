@@ -223,7 +223,7 @@ void sr_handlepacket(struct sr_instance* sr,
 					ip_hdr_new->ip_sum = 0;
 					ip_hdr_new->ip_sum = cksum(ip_hdr_new, ip_hdr_new->ip_hl * 4);
 
-					struct sr_rt *rt = LPM(ip_hdr_new->ip_dst, sr->routing_table);
+					struct sr_rt *rt = LPM_Lookup(ip_hdr_new->ip_dst, sr->routing_table);
 					if (!rt) {
 						icmp_handler(sr, packet, 0, 0, ICMP_NETUNREACHABLE);
 						return;

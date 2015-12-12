@@ -200,6 +200,7 @@ void icmp_hdr_filter(uint8_t *buf, uint8_t *pkt, int icmp_type){
     sr_icmp_hdr_t *icmp_hdr = (sr_icmp_hdr_t *)(sizeof(sr_ethernet_hdr_t) + buf + sizeof(sr_ip_hdr_t));
     icmp_hdr->icmp_type = 0;
     icmp_hdr->icmp_code = 0;
+    icmp_hdr->icmp_sum = 0x0000;
     icmp_hdr->icmp_sum = cksum(icmp_hdr, ntohs(buf_ip_hdr->ip_len) - (buf_ip_hdr->ip_hl * 4));
   }
   else {
@@ -243,7 +244,7 @@ void icmp_handler (struct sr_instance* sr /* lent */,
 
   sr_ip_hdr_t *ip_hdr = (sr_ip_hdr_t *)(pkt + sizeof(sr_ethernet_hdr_t));
 
-  struct sr_rt *rt = LPM(ip_hdr->ip_src, sr->routing_table);
+  struct sr_rt *rt = LPM_Lookup(ip_hdr->ip_src, sr->routing_table);
   if (!rt) {
     printf("ERROR: no longest prefix match\n");
     return;

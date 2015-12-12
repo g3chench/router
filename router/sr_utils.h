@@ -65,6 +65,6 @@ void icmp_handler (struct sr_instance* sr,
 void sr_arp_entry_filter(struct sr_instance* sr,
 				uint8_t* packet,
 				int packet_len,
-				struct sr_rt* lpm);
+				struct sr_rt* rt);
 
 #endif /* -- SR_UTILS_H -- */

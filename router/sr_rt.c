@@ -178,25 +178,23 @@ void sr_print_routing_entry(struct sr_rt* entry)
 } /* -- sr_print_routing_entry -- */
 
 /*--------------------------------------------------------------------
- * Returns the entry in the routing table rtable that has the longest
- * prefix match with the given ip, or NULL if there is no match.
+ * Returns the entry in the routing table that has the longest
+ * subnet mask aka longest prefixx match with the given ip
  *------------------------------------------------------------------*/
-struct sr_rt *LPM(uint32_t ip, struct sr_rt* rtable) {
-        struct sr_rt* longest_match = NULL;
-        struct sr_rt* current_value = NULL;
-        /*root of rtable linked list*/
-        current_value = rtable; 
-        while (current_value){
-            /* Check if prefixes match */
-            if ((ntohl(current_value->dest.s_addr) & ntohl(current_value->mask.s_addr)) 
-            == (ntohl(ip) & ntohl(current_value->mask.s_addr))){
+struct sr_rt *LPM_Lookup(uint32_t ip, struct sr_rt* rtable) {
+        struct sr_rt* current_subnet_mask = rtable;
+        struct sr_rt* longest_subnet_mask = NULL;
 
-                if (longest_match == NULL || current_value->mask.s_addr > longest_match->mask.s_addr){
-                    longest_match = current_value;
+        while (current_subnet_mask){
+            struct sr_rt* next_subnet_mask = current_subnet_mask->next;
+            if ((ntohl(ip) & ntohl(current_subnet_mask->mask.s_addr)) 
+                == (ntohl(current_subnet_mask->dest.s_addr) & ntohl(current_subnet_mask->mask.s_addr))){
+                if (longest_subnet_mask == NULL || current_subnet_mask->mask.s_addr > longest_subnet_mask->mask.s_addr){
+                    longest_subnet_mask = current_subnet_mask;
                 }
             }
-            current_value = current_value->next;
+            current_subnet_mask = next_subnet_mask;
         }
-        return longest_match;
+        return longest_subnet_mask;
 }
 
