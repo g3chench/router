@@ -37,6 +37,7 @@ Enable NAT functionality with the `-n` flag. The following timeout intervals are
 Translates packets by performing the following actions:
 
 - Receives packet on an interface
+
 - Check of it's ICMP or TCP
 
 - If packet is outbound
@@ -47,8 +48,11 @@ Translates packets by performing the following actions:
   - If no mapping and not a SYN, drop packet
 
 - Rewrite IP header for packet
+
 - Rewrite ID for ICMP and port for TCP
+
 - Update checksums
+
 - Route packet
 
 Does not support UDP
