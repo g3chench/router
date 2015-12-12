@@ -318,7 +318,7 @@ void icmp_handler (struct sr_instance* sr /* lent */,
 void lookup_and_send(struct sr_instance* sr, uint8_t* pkt, int len, struct sr_rt* rt) {
 
   struct sr_arpentry *arpentry = sr_arpcache_lookup(&(sr->cache), rt->gw.s_addr);
-  sr_ethernet_hdr_t *eth_hdr = (sr_ethernet_hdr_t *)packet;
+  sr_ethernet_hdr_t *eth_hdr = (sr_ethernet_hdr_t *)pkt;
 
   if (arpentry) {
     struct sr_if* interface = sr_get_interface(sr, rt->interface);
@@ -330,6 +330,6 @@ void lookup_and_send(struct sr_instance* sr, uint8_t* pkt, int len, struct sr_rt
     free(arpentry);
   }
   else {
-    handle_arpreq(sr_arpcache_queuereq(&(sr->cache), rt->gw.s_addr, pkt, len, rt->interface), arpreq);
+    handle_arpreq(sr, sr_arpcache_queuereq(&(sr->cache), rt->gw.s_addr, pkt, len, rt->interface));
   }
 }
