@@ -260,9 +260,9 @@ void populate_icmp_hdr(int icmp_type, uint8_t *buf, uint8_t *original_packet){
 
 /* Create and populate ICMP packet.*/
 void icmp_handler (struct sr_instance* sr,
+                int icmp_type,
                 uint8_t* pkt,
                 int len,
-                int icmp_type,
                 uint32_t icmp_sip){
 
   sr_ip_hdr_t *ip_hdr = (sr_ip_hdr_t *)(sizeof(sr_ethernet_hdr_t) + pkt);
