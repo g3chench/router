@@ -229,11 +229,8 @@ void sr_handlepacket(struct sr_instance* sr,
 						icmp_handler(sr, ICMP_NETUNREACHABLE, packet, 0, 0);
 						return;
 					}
-
 					lookup_and_send(sr, packet, len, lpm);
-					
 				}
-
 			}
 			break;
 		
