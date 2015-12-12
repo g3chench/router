@@ -28,11 +28,11 @@
 #ifndef SR_UTILS_H
 #define SR_UTILS_H
 
-#define ICMP_ECHOREPLY       1
-#define ICMP_NETUNREACHABLE  2
-#define ICMP_HOSTUNREACHABLE 3
-#define ICMP_PORTUNREACHABLE 4
-#define ICMP_TIMEEXCEEDED    5
+#define ECHO_REPLY       1
+#define NET_UNREACHABLE  2
+#define HOST_UNREACHABLE 3
+#define PORT_UNREACHABLE 4
+#define TIME_EXCEEDED    5
 #define INIT_TTL 255
 
 uint16_t cksum(const void *_data, int len);

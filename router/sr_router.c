@@ -189,7 +189,7 @@ void sr_handlepacket(struct sr_instance* sr,
 
 							if (expected_icmp_cksum == actual_icmp_checksum) {
 								icmp_hdr->icmp_sum = expected_icmp_cksum; 
-								icmp_handler(sr, packet, len, 0, ICMP_ECHOREPLY);
+								icmp_handler(sr, packet, len, 0, ECHO_REPLY);
 							}
 							else {
 								printf("ERROR: Checksum do not match on ICMP echo request packet.\n");
@@ -197,7 +197,7 @@ void sr_handlepacket(struct sr_instance* sr,
 						}
 					}
 					else if (protocol == ip_protocol_udp || protocol == ip_protocol_tcp) {
-						icmp_handler(sr, packet, 0, ip_hdr->ip_dst, ICMP_PORTUNREACHABLE);
+						icmp_handler(sr, packet, 0, ip_hdr->ip_dst, PORT_UNREACHABLE);
 					}
 					else { 
 						printf("ERROR: Unsupported IP protocol type.\n");
@@ -210,7 +210,7 @@ void sr_handlepacket(struct sr_instance* sr,
 
 					ip_hdr_new->ip_ttl--;
 					if (ip_hdr_new->ip_ttl < 1) {
-						icmp_handler(sr, packet, 0, 0, ICMP_TIMEEXCEEDED);
+						icmp_handler(sr, packet, 0, 0, TIME_EXCEEDED);
 						return;
 					}
 					ip_hdr_new->ip_sum = 0;
@@ -218,7 +218,7 @@ void sr_handlepacket(struct sr_instance* sr,
 
 					struct sr_rt *rt = LPM_Lookup(ip_hdr_new->ip_dst, sr->routing_table);
 					if (!rt) {
-						icmp_handler(sr, packet, 0, 0, ICMP_NETUNREACHABLE);
+						icmp_handler(sr, packet, 0, 0, NET_UNREACHABLE);
 						return;
 					}
 					sr_arp_entry_filter(sr, packet, len, rt);
