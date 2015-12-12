@@ -197,14 +197,15 @@ void sr_print_if(struct sr_if* iface)
  * Return the interface record in if_list that has the given ip. Return
  * NULL if not found.
  *-----------------------------------------------------------------------*/
-struct sr_if* sr_get_if_from_ip (uint32_t ip, struct sr_if* if_list) {
-	struct sr_if *interface = if_list;
+struct sr_if* ip_iface (uint32_t ip, struct sr_if* if_list) {
+	struct sr_if *iface = if_list;
 
-	while (interface) {
-		if (ip == interface->ip) {
-			return interface;
+	while (iface) {
+		next_iface = iface->next;
+		if (ip == iface->ip) {
+			return iface;
 		}
-		interface = interface->next;
+		iface = next_iface;
 	}
 
 	return NULL;

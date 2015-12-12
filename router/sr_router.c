@@ -97,7 +97,7 @@ void sr_handlepacket(struct sr_instance* sr,
 			sr_arp_hdr_t *arp_hdr = (sr_arp_hdr_t *) (sizeof(sr_ethernet_hdr_t) + packet);
 			enum sr_arp_opcode arp_op_type = arp_hdr->ar_op;
 
-			if (!sr_get_if_from_ip(arp_hdr->ar_tip, sr->if_list)) {
+			if (!ip_iface(arp_hdr->ar_tip, sr->if_list)) {
 				printf("ERROR: Invalid ARP Packet.\n");
 				return;
 			}
@@ -178,7 +178,7 @@ void sr_handlepacket(struct sr_instance* sr,
 				return;
 			} else {
 				ip_hdr->ip_sum = expected_cksum; 
-				if (sr_get_if_from_ip(ip_hdr->ip_dst, sr->if_list)) {
+				if (ip_iface(ip_hdr->ip_dst, sr->if_list)) {
 					printf("DEBUG: INCOMING IP PACKET\n");
 					uint8_t protocol = ip_hdr->ip_p;
 
