@@ -196,43 +196,43 @@ void icmp_hdr_filter(uint8_t *buf, uint8_t *pkt, int icmp_type){
 	sr_ip_hdr_t *ip_hdr = (sr_ip_hdr_t *)(pkt + sizeof(sr_ethernet_hdr_t));  
   sr_ip_hdr_t *buf_ip_hdr = (sr_ip_hdr_t *)(buf + sizeof(sr_ethernet_hdr_t));
 
-  switch(icmp_type){
-    case ICMP_ECHOREPLY:
-      sr_icmp_hdr_t *icmp_hdr = (sr_icmp_hdr_t *)(buf + sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t));
-      icmp_hdr->icmp_type = 0;
-      icmp_hdr->icmp_code = 0;
-      icmp_hdr->icmp_sum = 0x0000;
-      icmp_hdr->icmp_sum = cksum(icmp_hdr, ntohs(buf_ip_hdr->ip_len) - (buf_ip_hdr->ip_hl * 4));
-      break;
-    default:
-      sr_icmp_t3_hdr_t *icmp_hdr = (sr_icmp_t3_hdr_t *)(buf + sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t));
-      switch(icmp_type){
-        case ICMP_PORTUNREACHABLE:
-          icmp_hdr->icmp_type = 3;
-          icmp_hdr->icmp_code = 3;
-          break;
-        case ICMP_NETUNREACHABLE:
-          icmp_hdr->icmp_type = 3;
-          icmp_hdr->icmp_code = 0;
-          break;
-        case ICMP_HOSTUNREACHABLE:
-          icmp_hdr->icmp_type = 3;
-          icmp_hdr->icmp_code = 1;
-          break;
-        case ICMP_TIMEEXCEEDED:
-          icmp_hdr->icmp_type = 11;
-          icmp_hdr->icmp_code = 0;
-          break;
-        default:
-          printf("ERROR: Invalid ICMP Type.\n");
-          break;
-      }
-      icmp_hdr->unused = 0;
-      icmp_hdr->next_mtu = 0;
-      memcpy(icmp_hdr->data, ip_hdr, ICMP_DATA_SIZE);
-      icmp_hdr->icmp_sum = 0;
-      icmp_hdr->icmp_sum = cksum(icmp_hdr, ntohs(buf_ip_hdr->ip_len) - (buf_ip_hdr->ip_hl * 4));
-      break;
+  if (icmp_type == ICMP_ECHOREPLY) { 
+    sr_icmp_hdr_t *icmp_hdr = (sr_icmp_hdr_t *)(sizeof(sr_ethernet_hdr_t) + buf + sizeof(sr_ip_hdr_t));
+    icmp_hdr->icmp_type = 0;
+    icmp_hdr->icmp_code = 0;
+    icmp_hdr->icmp_sum = 0x0000;
+    icmp_hdr->icmp_sum = cksum(icmp_hdr, ntohs(buf_ip_hdr->ip_len) - (buf_ip_hdr->ip_hl * 4));
+  }
+  else {
+    sr_icmp_t3_hdr_t *icmp_hdr = (sr_icmp_t3_hdr_t *)(buf + sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t));
+
+    switch(icmp_type){
+      case ICMP_PORTUNREACHABLE:
+        icmp_hdr->icmp_type = 3;
+        icmp_hdr->icmp_code = 3;
+        break;
+      case ICMP_NETUNREACHABLE:
+        icmp_hdr->icmp_type = 3;
+        icmp_hdr->icmp_code = 0;
+        break;
+      case ICMP_HOSTUNREACHABLE:
+        icmp_hdr->icmp_type = 3;
+        icmp_hdr->icmp_code = 1;
+        break;
+      case ICMP_TIMEEXCEEDED:
+        icmp_hdr->icmp_type = 11;
+        icmp_hdr->icmp_code = 0;
+        break;
+      default:
+        printf("ERROR: Invalid ICMP Type.\n");
+        break;
+    }
+
+    icmp_hdr->unused = 0;
+    icmp_hdr->next_mtu = 0;
+    memcpy(icmp_hdr->data, ip_hdr, ICMP_DATA_SIZE);
+    icmp_hdr->icmp_sum = 0;
+    icmp_hdr->icmp_sum = cksum(icmp_hdr, ntohs(buf_ip_hdr->ip_len) - (buf_ip_hdr->ip_hl * 4));
   }
 }
 
