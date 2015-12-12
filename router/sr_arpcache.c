@@ -35,30 +35,23 @@ void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req) {
 			uint8_t hrd_addr[ETHER_ADDR_LEN] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 			enum sr_ethertype eth_arp = ethertype_arp;
 			enum sr_ethertype eth_ip = ethertype_ip;
-			populate_eth_hdr(eth_hdr, hrd_addr, interface->addr, eth_arp);
+
+			memcpy(eth_hdr->ether_dhost, hrd_addr, ETHER_ADDR_LEN);
+			memcpy(eth_hdr->ether_shost, interface->addr, ETHER_ADDR_LEN);
+			eth_hdr->ether_type = htons(eth_arp);
 
 			struct sr_arp_hdr *arp_hdr = (struct sr_arp_hdr *)(sizeof(sr_ethernet_hdr_t) + pkt);
 			enum sr_arp_hrd_fmt hrd_eth = arp_hrd_ethernet;
 			enum sr_arp_opcode arp_op_req = arp_op_request;
 
-
-			/* format of hardware address   */
 			arp_hdr->ar_hrd = htons(hrd_eth);
-			/* format of protocol address   */
 			arp_hdr->ar_pro = htons(eth_ip);
-			/* length of hardware address   */
 			arp_hdr->ar_hln = ETHER_ADDR_LEN;
-			/* length of protocol address   */
 			arp_hdr->ar_pln = 4;
-			/* ARP op_req (command)         */
 			arp_hdr->ar_op = htons(arp_op_req);
-			/* sender IP address            */
 			arp_hdr->ar_sip = interface->ip;
-			/* target IP address            */
 			arp_hdr->ar_tip = req->ip;
-			/* sender hardware address      */
 			memcpy(arp_hdr->ar_sha, interface->addr, ETHER_ADDR_LEN);
-			/* target hardware address      */
 			memcpy(arp_hdr->ar_tha, hrd_addr, ETHER_ADDR_LEN);
 
 
@@ -86,41 +79,6 @@ void sr_arpcache_sweepreqs(struct sr_instance *sr) {
 		handle_arpreq(sr, arpreq);
 		arpreq = next_req;
 	}
-}
-
-/*
- * Pass in the ARP Header to be populated
- * with it's corresponding params
- */
-void populate_arp_hdr(sr_arp_hdr_t * arp_hdr,
-					  unsigned short  ar_hrd,
-					  unsigned short  ar_pro,
-					  unsigned char   ar_hln,
-					  unsigned char   ar_pln,
-					  unsigned short  ar_op,
-					  unsigned char*  ar_sha,
-					  uint32_t        ar_sip,
-					  unsigned char*  ar_tha,
-					  uint32_t        ar_tip) {
-
-	/* format of hardware address   */
-	arp_hdr->ar_hrd = htons(ar_hrd);
-	/* format of protocol address   */
-	arp_hdr->ar_pro = htons(ar_pro);
-	/* length of hardware address   */
-	arp_hdr->ar_hln = ar_hln;
-	/* length of protocol address   */
-	arp_hdr->ar_pln = ar_pln;
-	/* ARP op_req (command)         */
-	arp_hdr->ar_op = htons(ar_op);
-	/* sender IP address            */
-	arp_hdr->ar_sip = ar_sip;
-	/* target IP address            */
-	arp_hdr->ar_tip = ar_tip;
-	/* sender hardware address      */
-	memcpy(arp_hdr->ar_sha, ar_sha, ETHER_ADDR_LEN);
-	/* target hardware address      */
-	memcpy(arp_hdr->ar_tha, ar_tha, ETHER_ADDR_LEN);
 }
 
 /* You should not need to touch the rest of this code. */

@@ -52,15 +52,6 @@ void print_hdr_arp(uint8_t *buf);
 /* prints all headers, starting from eth */
 void print_hdrs(uint8_t *buf, uint32_t length);
 
-/*
- * Pass in the Ethernet Header to be populated
- * with it's corresponding params
- */
-void populate_eth_hdr(struct sr_ethernet_hdr * eth_hdr,
-                      uint8_t ether_dhost[ETHER_ADDR_LEN],
-                      uint8_t ether_shost[ETHER_ADDR_LEN],
-                      uint16_t ether_type);
-
 void populate_icmp_hdr(int icmp_type,
 					uint8_t *buf, 
 					uint8_t *original_packet);

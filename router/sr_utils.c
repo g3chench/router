@@ -189,22 +189,6 @@ void print_hdrs(uint8_t *buf, uint32_t length) {
   }
 }
 
-/*
- * Pass in the Ethernet Header to be populated
- * with it's corresponding params
- */
-void populate_eth_hdr(struct sr_ethernet_hdr * eth_hdr,
-                      uint8_t  ether_dhost[ETHER_ADDR_LEN],
-                      uint8_t  ether_shost[ETHER_ADDR_LEN],
-                      uint16_t ether_type)
-{
-	/* Destination Address */
-	memcpy(eth_hdr->ether_dhost, ether_dhost, ETHER_ADDR_LEN);
-	/* Source Address */
-	memcpy(eth_hdr->ether_shost, ether_shost, ETHER_ADDR_LEN);
-	/* Ethernet Type */
-	eth_hdr->ether_type = htons(ether_type);
-}
 
 /* 
   This function populates IP hdr.
