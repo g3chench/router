@@ -217,18 +217,18 @@ void sr_handlepacket(struct sr_instance* sr,
 
 					ip_hdr_new->ip_ttl--;
 					if (ip_hdr_new->ip_ttl < 1) {
-						icmp_handler(sr, packet, 0, ip_hdr->ip_dst, ICMP_TIMEEXCEEDED);
+						icmp_handler(sr, packet, 0, ip_hdr_new->ip_dst, ICMP_TIMEEXCEEDED);
 						return;
 					}
-					ip_hdr->ip_sum = 0;
-					ip_hdr->ip_sum = cksum(ip_hdr_new, ip_hdr_new->ip_hl * 4);
+					ip_hdr_new->ip_sum = 0;
+					ip_hdr_new->ip_sum = cksum(ip_hdr_new, ip_hdr_new->ip_hl * 4);
 
-					struct sr_rt *lpm = LPM(ip_hdr_new->ip_dst, sr->routing_table);
-					if (!lpm) {
-						icmp_handler(sr, packet, 0, ip_hdr->ip_dst, ICMP_NETUNREACHABLE);
+					struct sr_rt *rt = LPM(ip_hdr_new->ip_dst, sr->routing_table);
+					if (!rt) {
+						icmp_handler(sr, packet, 0, ip_hdr_new->ip_dst, ICMP_NETUNREACHABLE);
 						return;
 					}
-					lookup_and_send(sr, packet, len, lpm);
+					lookup_and_send(sr, packet, len, rt);
 				}
 			}
 			break;
