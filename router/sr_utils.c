@@ -196,7 +196,7 @@ void icmp_hdr_filter(uint8_t *buf, uint8_t *pkt, int icmp_type){
 	sr_ip_hdr_t *ip_hdr = (sr_ip_hdr_t *)(pkt + sizeof(sr_ethernet_hdr_t));  
   sr_ip_hdr_t *buf_ip_hdr = (sr_ip_hdr_t *)(buf + sizeof(sr_ethernet_hdr_t));
 
-  switch(icmp){
+  switch(icmp_type){
     case ICMP_ECHOREPLY:
       sr_icmp_hdr_t *icmp_hdr = (sr_icmp_hdr_t *)(buf + sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t));
       icmp_hdr->icmp_type = 0;
