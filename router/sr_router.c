@@ -182,7 +182,7 @@ void sr_handlepacket(struct sr_instance* sr,
 					printf("DEBUG: INCOMING IP PACKET\n");
 					uint8_t protocol = ip_hdr->ip_p;
 
-					sr_icmp_hdr_t *icmp_hdr = (sr_icmp_hdr_t *)(sizeof(sr_ip_hdr_t) + sizeof(sr_ethernet_hdr_t) + packet);
+					sr_icmp_hdr_t *icmp_hdr = (sr_icmp_hdr_t *)(sizeof(sr_ip_hdr_t) + packet + sizeof(sr_ethernet_hdr_t));
 
 					if (protocol == ip_protocol_icmp)
 					{
@@ -212,8 +212,28 @@ void sr_handlepacket(struct sr_instance* sr,
 				}
 				else { /* packet not for us; we forward it */
 					printf("DEBUG: NEED TO FORWARD IP PACKET\n");
-					forward_ip_packet(sr, packet, len);
+
+					sr_ip_hdr_t *ip_hdr_new = (sr_ip_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t));
+
+					ip_hdr_new->ip_ttl--;
+					if (ip_hdr_new->ip_ttl < 1) {
+						printf("TTL of packet we have to forward is 0. Sending Time Exceeded ICMP.\n");
+						icmp_handler(sr, ICMP_TIMEEXCEEDED, packet, 0, 0);
+						return;
+					}
+					ip_hdr->ip_sum = 0;
+					ip_hdr->ip_sum = cksum(ip_hdr_new, ip_hdr_new->ip_hl * 4);
+
+					struct sr_rt *lpm = LPM(ip_hdr_new->ip_dst, sr->routing_table);
+					if (!lpm) {
+						icmp_handler(sr, ICMP_NETUNREACHABLE, packet, 0, 0);
+						return;
+					}
+
+					lookup_and_send(sr, packet, len, lpm);
+					
 				}
+
 			}
 			break;
 		
