@@ -53,6 +53,8 @@ void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req) {
 			memcpy(arp_hdr->ar_sha, interface->addr, ETHER_ADDR_LEN);
 			memcpy(arp_hdr->ar_tha, hrd_addr, ETHER_ADDR_LEN);
 
+			printf("3...DEBUG: SEND PACKET.\n");
+
 			sr_send_packet(sr, pkt, packet_len, interface->name);
 			free(pkt);
 			req->sent = now;

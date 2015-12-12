@@ -82,6 +82,8 @@ void sr_handlepacket(struct sr_instance* sr,
 
 	/* fill in code here */
 
+	printf("*** -> Received packet of length %d \n",len);
+
 	struct sr_if *new_interface = sr_get_interface(sr, interface);
 
 	sr_ethernet_hdr_t *eth_hdr = (sr_ethernet_hdr_t *)packet;
@@ -91,6 +93,7 @@ void sr_handlepacket(struct sr_instance* sr,
 	switch(ether_type){
 
 		case ethertype_arp:
+			printf("DEBUG: ARP PACKET RECEIVED.\n");
 			sr_arp_hdr_t *arp_hdr = (sr_arp_hdr_t *) (sizeof(sr_ethernet_hdr_t) + packet);
 			enum sr_arp_opcode arp_op_type = arp_hdr->ar_op;
 
@@ -132,6 +135,7 @@ void sr_handlepacket(struct sr_instance* sr,
 				free(pkt_resp);
 			}
 			else if (arp_op_type == htons(arp_op_reply)) {
+				printf("DEBUG: INCOMING ARP REPLY PACKET\n");
 				struct sr_arpreq *arpreq = sr_arpcache_insert(&(sr->cache), arp_hdr->ar_sha, arp_hdr->ar_sip);
 				struct sr_packet *curr_pkt = arpreq->packets;
 				while (curr_pkt) {
@@ -152,6 +156,7 @@ void sr_handlepacket(struct sr_instance* sr,
 			break;
 		
 		case ethertype_ip:
+			printf("DEBUG: INCOMING IP PACKET.\n");
 
 			struct sr_ip_hdr *ip_hdr = (struct sr_ip_hdr *)(sizeof(sr_ethernet_hdr_t) + packet);
 
@@ -169,6 +174,7 @@ void sr_handlepacket(struct sr_instance* sr,
 			} else {
 				ip_hdr->ip_sum = expected_cksum; 
 				if (ip_iface(ip_hdr->ip_dst, sr->if_list)) {
+					printf("DEBUG: INCOMING IP PACKET\n");
 					uint8_t protocol = ip_hdr->ip_p;
 
 					sr_icmp_hdr_t *icmp_hdr = (sr_icmp_hdr_t *)(sizeof(sr_ip_hdr_t) + packet + sizeof(sr_ethernet_hdr_t));
