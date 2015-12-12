@@ -201,7 +201,7 @@ struct sr_if* ip_iface (uint32_t ip, struct sr_if* if_list) {
 	struct sr_if *iface = if_list;
 
 	while (iface) {
-		struct sr_if next_iface = iface->next;
+		struct sr_if *next_iface = iface->next;
 		if (ip == iface->ip) {
 			return iface;
 		}
