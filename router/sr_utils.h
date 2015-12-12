@@ -52,9 +52,9 @@ void print_hdr_arp(uint8_t *buf);
 /* prints all headers, starting from eth */
 void print_hdrs(uint8_t *buf, uint32_t length);
 
-void populate_icmp_hdr(int icmp_type,
-					uint8_t *buf, 
-					uint8_t *original_packet);
+void icmp_hdr_filter(uint8_t *buf, 
+					uint8_t *original_packet,
+					int icmp_type);
 
 void icmp_handler (struct sr_instance* sr,
 				uint8_t* original_packet,
