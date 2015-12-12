@@ -261,13 +261,13 @@ void populate_icmp_hdr(int icmp_type, uint8_t *buf, uint8_t *original_packet){
 void icmp_handler (struct sr_instance* sr /* lent */,
                 uint8_t* original_packet /* lent */,
                 int original_len,
-                uint32_t sender_ip,
+                uint32_t ip_sip,
                 int icmp_type){
 
   sr_ip_hdr_t *original_ip_hdr = (sr_ip_hdr_t *)(original_packet + sizeof(sr_ethernet_hdr_t));
 
-  struct sr_rt *lpm = LPM(original_ip_hdr->ip_src, sr->routing_table);
-  if (!lpm) {
+  struct sr_rt *rt = LPM(original_ip_hdr->ip_src, sr->routing_table);
+  if (!rt) {
     printf("ERROR: no longest prefix match\n");
     return;
   }
@@ -276,9 +276,9 @@ void icmp_handler (struct sr_instance* sr /* lent */,
   * is the address of the interface that sent out the ARP requests (that had no response). If
   * not specified (for all other ICMP types), we use the default source IP (IP of interface
   * of next hop) */
-  if (!sender_ip && icmp_type != ICMP_ECHOREPLY) {
-    struct sr_if* interface = sr_get_interface(sr, lpm->interface);
-    sender_ip = interface->ip;
+  if (!ip_sip && icmp_type != ICMP_ECHOREPLY) {
+    struct sr_if* interface = sr_get_interface(sr, rt->interface);
+    ip_sip = interface->ip;
   }
 
   if (icmp_type == ICMP_ECHOREPLY) { /* Type 0 header */
@@ -290,27 +290,37 @@ void icmp_handler (struct sr_instance* sr /* lent */,
     original_ip_hdr->ip_sum = 0;
     original_ip_hdr->ip_sum = cksum(original_ip_hdr, original_ip_hdr->ip_hl * 4);
     populate_icmp_hdr(icmp_type, original_packet, original_packet);
-    sr_arp_entry_filter(sr, original_packet, original_len, lpm);
+    sr_arp_entry_filter(sr, original_packet, original_len, rt);
   }
-  else { /* Type 3 or type 11 header */
-    int icmp_len = sizeof(sr_icmp_t3_hdr_t);
-    int packet_len = sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) + icmp_len;
-    uint8_t *new_packet = malloc(packet_len);
+  else {
+    uint8_t *new_pkt = malloc(sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_t3_hdr_t));
 
-    sr_ethernet_hdr_t *eth_hdr = (sr_ethernet_hdr_t *)new_packet;
+    sr_ethernet_hdr_t *eth_hdr = (sr_ethernet_hdr_t *)new_pkt;
     enum sr_ethertype ethertype = ethertype_ip;
     eth_hdr->ether_type = htons(ethertype);
 
-    sr_ip_hdr_t *ip_hdr = (sr_ip_hdr_t *)(new_packet + sizeof(sr_ethernet_hdr_t));
+    sr_ip_hdr_t *ip_hdr = (sr_ip_hdr_t *)(new_pkt + sizeof(sr_ethernet_hdr_t));
 
     enum sr_ip_protocol protocol = ip_protocol_icmp;
+    ip_hdr->ip_v = 4;             /* version */
+    ip_hdr->ip_hl = 5;            /* header length */
+    ip_hdr->ip_tos = 0;           /* type of service */
+    ip_hdr->ip_len = htons(sizeof(struct sr_ip_hdr) + sizeof(sr_icmp_t3_hdr_t));  /* total length */
+    ip_hdr->ip_id = 0x0000;       /* identification */
+    ip_hdr->ip_off = htons(IP_DF);  /* fragment offset field */
+    ip_hdr->ip_ttl = INIT_TTL;    /* time to live */
+    ip_hdr->ip_p = protocol;      /* protocol */
+    ip_hdr->ip_src = ip_sip;   /* source address*/
+    ip_hdr->ip_dst = original_ip_hdr->ip_src; /* dest address*/
 
-    populate_ip_hdr(ip_hdr, icmp_len, protocol, sender_ip, original_ip_hdr->ip_src);
+    /* Calculate Checksum */
+    ip_hdr->ip_sum = 0x0000; /* Make sure checksum is zeroed out before calculating */
+    ip_hdr->ip_sum = cksum(ip_hdr, ip_hdr->ip_hl * 4);
 
-    populate_icmp_hdr(icmp_type, new_packet, original_packet);
+    populate_icmp_hdr(icmp_type, new_pkt, original_packet);
 
-    sr_arp_entry_filter(sr, new_packet, packet_len, lpm);
-    free(new_packet);
+    sr_arp_entry_filter(sr, new_pkt, sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_t3_hdr_t), rt);
+    free(new_pkt);
   }
 }
 
@@ -325,7 +335,7 @@ void sr_arp_entry_filter(struct sr_instance* sr, uint8_t* pkt, int len, struct s
     memcpy(eth_hdr->ether_dhost, arpentry->mac, ETHER_ADDR_LEN);
     memcpy(eth_hdr->ether_shost, interface->addr, ETHER_ADDR_LEN);
     printf("2...DEBUG: SEND PACKET.\n");
-    /*print_hdrs(packet, packet_len);*/
+    /*print_hdrs(packet, len_pkt);*/
     sr_send_packet(sr, pkt, len, rt->interface);
     free(arpentry);
   }
