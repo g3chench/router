@@ -21,7 +21,7 @@ void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req) {
 			struct sr_packet *pkt_pending = req->packets; /* linked list */
 			struct sr_if *interface = sr_get_interface(sr, pkt_pending->iface);
 			while (pkt_pending) {
-				icmp_handler(sr, ICMP_HOSTUNREACHABLE, pkt_pending->buf, 0, interface->ip);
+				icmp_handler(sr, pkt_pending->buf, 0, interface->ip, ICMP_HOSTUNREACHABLE);
 				pkt_pending = pkt_pending->next;
 			}
 			sr_arpreq_destroy(&(sr->cache), req);

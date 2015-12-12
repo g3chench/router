@@ -259,10 +259,10 @@ void populate_icmp_hdr(int icmp_type, uint8_t *buf, uint8_t *original_packet){
 
 /* Create and populate ICMP packet.*/
 void icmp_handler (struct sr_instance* sr /* lent */,
-                int icmp_type,
                 uint8_t* original_packet /* lent */,
                 int original_len,
-                uint32_t sender_ip){
+                uint32_t sender_ip,
+                int icmp_type){
 
   sr_ip_hdr_t *original_ip_hdr = (sr_ip_hdr_t *)(original_packet + sizeof(sr_ethernet_hdr_t));
 
@@ -314,34 +314,6 @@ void icmp_handler (struct sr_instance* sr /* lent */,
   }
 }
 
-/*--------------------------------------------------------------------
- * Forward an IP packet that is not destined for one of our interfaces.
- *--------------------------------------------------------------------*/
-void forward_ip_packet(struct sr_instance* sr,
-                       uint8_t * packet/* lent */,
-                       unsigned int packet_len)
-{
-  sr_ip_hdr_t *ip_hdr = (sr_ip_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t));
-
-  ip_hdr->ip_ttl--;
-  if (ip_hdr->ip_ttl < 1) {
-    printf("TTL of packet we have to forward is 0. Sending Time Exceeded ICMP.\n");
-    icmp_handler(sr, ICMP_TIMEEXCEEDED, packet, 0, 0);
-    return;
-  }
-  /* Recalculate checksum because we modified the ttl in the header */
-  ip_hdr->ip_sum = 0;
-  ip_hdr->ip_sum = cksum(ip_hdr, ip_hdr->ip_hl * 4);
-
-  struct sr_rt *lpm = LPM(ip_hdr->ip_dst, sr->routing_table);
-  if (!lpm) {
-    /*printf("Sending ICMP net unreachable.\n");*/
-    icmp_handler(sr, ICMP_NETUNREACHABLE, packet, 0, 0);
-    return;
-  }
-
-  lookup_and_send(sr, packet, packet_len, lpm);
-}
 
 void lookup_and_send(struct sr_instance* sr, uint8_t* packet, int packet_len, struct sr_rt* lpm) {
 

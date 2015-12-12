@@ -57,18 +57,14 @@ void populate_icmp_hdr(int icmp_type,
 					uint8_t *original_packet);
 
 void icmp_handler (struct sr_instance* sr,
-				int icmp_type,
 				uint8_t* original_packet,
 				int original_len,
-				uint32_t sender_ip);
+				uint32_t sender_ip,
+				int icmp_type);
 
 void lookup_and_send(struct sr_instance* sr,
 				uint8_t* packet,
 				int packet_len,
 				struct sr_rt* lpm);
-
-void forward_ip_packet(struct sr_instance* sr,
-                       uint8_t * packet/* lent */,
-                       unsigned int packet_len);
 
 #endif /* -- SR_UTILS_H -- */

@@ -196,7 +196,7 @@ void sr_handlepacket(struct sr_instance* sr,
 
 							if (expected_icmp_cksum == actual_icmp_checksum) {
 								icmp_hdr->icmp_sum = expected_icmp_cksum; 
-								icmp_handler(sr, ICMP_ECHOREPLY, packet, len, 0);
+								icmp_handler(sr, packet, len, ip_hdr->ip_dst, ICMP_ECHOREPLY);
 							}
 							else {
 								printf("ERROR: Checksum do not match on ICMP echo request packet.\n");
@@ -204,21 +204,20 @@ void sr_handlepacket(struct sr_instance* sr,
 						}
 					}
 					else if (protocol == ip_protocol_udp || protocol == ip_protocol_tcp) {
-						icmp_handler(sr, ICMP_PORTUNREACHABLE, packet, 0, ip_hdr->ip_dst);
+						icmp_handler(sr, packet, 0, ip_hdr->ip_dst, ICMP_PORTUNREACHABLE);
 					}
-					else { /* ignore packet */
+					else { 
 						printf("ERROR: Unsupported IP protocol type.\n");
 					}
 				}
-				else { /* packet not for us; we forward it */
-					printf("DEBUG: NEED TO FORWARD IP PACKET\n");
+				else { 
+					printf("DEBUG: IP Packets to be forwarded\n");
 
 					sr_ip_hdr_t *ip_hdr_new = (sr_ip_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t));
 
 					ip_hdr_new->ip_ttl--;
 					if (ip_hdr_new->ip_ttl < 1) {
-						printf("TTL of packet we have to forward is 0. Sending Time Exceeded ICMP.\n");
-						icmp_handler(sr, ICMP_TIMEEXCEEDED, packet, 0, 0);
+						icmp_handler(sr, packet, 0, ip_hdr->ip_dst, ICMP_TIMEEXCEEDED);
 						return;
 					}
 					ip_hdr->ip_sum = 0;
@@ -226,7 +225,7 @@ void sr_handlepacket(struct sr_instance* sr,
 
 					struct sr_rt *lpm = LPM(ip_hdr_new->ip_dst, sr->routing_table);
 					if (!lpm) {
-						icmp_handler(sr, ICMP_NETUNREACHABLE, packet, 0, 0);
+						icmp_handler(sr, packet, 0, ip_hdr->ip_dst, ICMP_NETUNREACHABLE);
 						return;
 					}
 					lookup_and_send(sr, packet, len, lpm);
@@ -235,7 +234,7 @@ void sr_handlepacket(struct sr_instance* sr,
 			break;
 		
 		default:
-			printf("ERROR: Unsupported packet type. \n");
+			printf("ERROR: Invalid packet type. \n");
 			break;
 	}
 
