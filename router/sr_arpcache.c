@@ -12,7 +12,6 @@
 #include "sr_protocol.h"
 #include "sr_utils.h"
 #include "sr_rt.h"
-#include "sr_icmp.h"
 
 /* 
   This function gets called every second. For each request sent out, we keep
@@ -20,219 +19,126 @@
   See the comments in the header file for an idea of what it should look like.
 */
 void sr_arpcache_sweepreqs(struct sr_instance *sr) {
-    struct sr_arpreq *req = sr->cache.requests; /* linked list of requests */
-    while (req) {
+    struct sr_arpreq *arpreq = sr->cache.requests; /* linked list of requests */
+    while (arpreq) {
         /* Store next request because handle_arpreq may destroy current one */
-        struct sr_arpreq *nextReq = req->next;
-        handle_arpreq(sr, req);
-        req = nextReq;
+        struct sr_arpreq *next_req = arpreq->next;
+        handle_arpreq(sr, arpreq);
+        arpreq = next_req;
     }
 }
-
-/* After 1.0 second of sending the given arp request, check if this
-* request was already sent 5 times. If it ha, send ICMP host unreachable
-* message to packets waiting for a reply in a linked list. 
-* Do not attempt to send this request again otherwise...
-*/
-void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req) {
-    printf("    In handle_arpreq()------------------\n");
-    time_t now = time(NULL);
-
-    if (difftime(now, req->sent) > 1.0) {
-        if (req->times_sent >= 5) {
-            printf("This packet was sent 5 times already. Send ICMP HOST_UNREACHABLE \n");
-            struct sr_packet *current_packet = req->packets;
-            struct sr_if *out_iface = sr_get_interface(sr, current_packet->iface);
-
-            while (current_packet) {
-                handle_ICMP(sr, HOST_UNREACHABLE, current_packet->buf, 0, out_iface->ip);
-                current_packet = current_packet->next;
-            }
-            sr_arpreq_destroy(&(sr->cache), req);
-
-        /* Otherwise, send an ARP request */
-        } else {
-            send_arpreq(sr, req);
-            req->sent = now;
-            req->times_sent++;
-        }
-    }
-}
-
-
-/**
- * Send an arp request packet
- * @param sr  sr instance
- * @param request ARP request packet received
- */
-void send_arpreq(struct sr_instance *sr, struct sr_arpreq *request) {
-    printf("    in send_arpreq() ------------\n");
-
-    /*Construct arp request packet*/
-    int packet_len = sizeof(sr_ethernet_hdr_t) + sizeof(sr_arp_hdr_t);
-    uint8_t *packet = malloc(packet_len);
-
-    struct sr_ethernet_hdr *ethernet_header = (struct sr_ethernet_hdr *)packet;
-    struct sr_if *out_iface = sr_get_interface(sr, request->packets->iface);
-    
-    uint8_t broadcast_addr[ETHER_ADDR_LEN] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
-    gen_eth_hdr(ethernet_header, broadcast_addr, out_iface->addr, ethertype_arp);
-
-    struct sr_arp_hdr *arp_hdr = (struct sr_arp_hdr *)(packet + sizeof(sr_ethernet_hdr_t));
-
-    gen_arp_hdr(arp_hdr, 
-                    arp_hrd_ethernet, 
-                    ethertype_ip, 
-                    ETHER_ADDR_LEN, 
-                    4, 
-                    arp_op_request, 
-                    out_iface->addr,
-                    out_iface->ip, 
-                    broadcast_addr,
-                    request->ip);
-
-    /*send ARP request pkt thru outgoing interface*/
-    sr_send_packet(sr, packet, packet_len, out_iface->name);
-    free(packet);
-}
-
-/**
- * Fill in an arp header given its pointer. 
- * @param arp_hdr      pointer to arp header to fill in
- * @param hw_fmt       hardware address format
- * @param protocol     ARP protocol type
- * @param hw_len       hardware address length
- * @param protocol_len protocol length
- * @param opcode       ARP opcode type
- * @param sha          sender's hardware address
- * @param sip          sender's IP address
- * @param tha          target's hardware address
- * @param tip          target's IP address
- */
-void gen_arp_hdr(sr_arp_hdr_t * arp_hdr,
-              unsigned short  hw_fmt,
-              unsigned short  protocol,
-              unsigned char   hw_len,
-              unsigned char   protocol_len,
-              unsigned short  opcode,
-              unsigned char*  sha,
-              uint32_t        sip,
-              unsigned char*  tha,
-              uint32_t        tip) {
-
-    printf("    in gen_arp_hdr()------------\n");
-
-    arp_hdr->ar_hrd = htons(hw_fmt);
-    arp_hdr->ar_pro = htons(protocol);
-    arp_hdr->ar_hln = hw_len;
-    arp_hdr->ar_pln = protocol_len;
-    arp_hdr->ar_op = htons(opcode);
-    arp_hdr->ar_sip = sip;
-    arp_hdr->ar_tip = tip;
-    memcpy(arp_hdr->ar_sha, sha, ETHER_ADDR_LEN);
-    memcpy(arp_hdr->ar_tha, tha, ETHER_ADDR_LEN);
-}
-
 
 void handle_ARP(struct sr_instance* sr, uint8_t * packet, unsigned int len, char* interface) {
-    printf("In handle_ARP()---------------\n");
     
-    struct sr_if *inf = sr_get_interface(sr, interface);
-    sr_arp_hdr_t *arp_hdr = (sr_arp_hdr_t *) (packet + sizeof(sr_ethernet_hdr_t));
+    struct sr_if *new_interface = sr_get_interface(sr, interface);
+    sr_arp_hdr_t *arp_hdr = (sr_arp_hdr_t *) (sizeof(sr_ethernet_hdr_t) + packet);
 
-    if (!get_iface(arp_hdr->ar_tip, sr)) {
-        fprintf(stderr, "ERROR: This ARP packet is not for us\n");
+    if (!ip_iface(arp_hdr->ar_tip, sr->if_list)) {
+        printf("ERROR: Invalid ARP Packet.\n");
         return;
     }
 
     if (arp_hdr->ar_op == htons(arp_op_request)) {
-        printf("    got an arp op_request\n");
-        handle_arp_request(sr, packet, len, inf);
+        uint8_t *pkt_resp = malloc(sizeof(sr_arp_hdr_t) + sizeof(sr_ethernet_hdr_t));
+
+        struct sr_ethernet_hdr *eth_hdr_resp = (struct sr_ethernet_hdr *)pkt_resp;
+        struct sr_ethernet_hdr *eth_hdr_reply = (struct sr_ethernet_hdr *)packet;
+        enum sr_ethertype eth_arp = ethertype_arp;
+        enum sr_ethertype eth_ip = ethertype_ip;
+        memcpy(eth_hdr_resp->ether_dhost, eth_hdr_reply->ether_shost, ETHER_ADDR_LEN);
+        memcpy(eth_hdr_resp->ether_shost, new_interface->addr, ETHER_ADDR_LEN);
+        eth_hdr_resp->ether_type = htons(eth_arp);
+        
+        struct sr_arp_hdr *arp_hdr_resp = ((struct sr_arp_hdr *)(sizeof(sr_ethernet_hdr_t) + pkt_resp));
+        struct sr_arp_hdr *arp_hdr_reply = ((struct sr_arp_hdr *)(sizeof(sr_ethernet_hdr_t) + packet));
+        enum sr_arp_hrd_fmt hdr_arp = arp_hrd_ethernet;
+        enum sr_arp_opcode opcode = arp_op_reply;
+
+
+        arp_hdr_resp->ar_hrd = htons(hdr_arp);
+        arp_hdr_resp->ar_pro = htons(eth_ip);
+        arp_hdr_resp->ar_hln = ETHER_ADDR_LEN;
+        arp_hdr_resp->ar_pln = 4;
+        arp_hdr_resp->ar_op = htons(opcode);
+        arp_hdr_resp->ar_sip = new_interface->ip;
+        arp_hdr_resp->ar_tip = arp_hdr_reply->ar_sip;
+        memcpy(arp_hdr_resp->ar_sha, new_interface->addr, ETHER_ADDR_LEN);
+        memcpy(arp_hdr_resp->ar_tha, arp_hdr_reply->ar_sha, ETHER_ADDR_LEN);                    
+
+
+        sr_send_packet(sr, pkt_resp, sizeof(sr_arp_hdr_t) + sizeof(sr_ethernet_hdr_t), new_interface->name);
+
+        free(pkt_resp);
     }
     else if (arp_hdr->ar_op == htons(arp_op_reply)) {
-        printf("    got an op_reply\n");
-        handle_arp_reply(sr, arp_hdr);
-
-    } else {
-        fprintf(stderr, "ERROR: invalid ARP type specified\n");
+        printf("DEBUG: INCOMING ARP REPLY PACKET\n");
+        struct sr_arpreq *arpreq = sr_arpcache_insert(&(sr->cache), arp_hdr->ar_sha, arp_hdr->ar_sip);
+        struct sr_packet *curr_pkt = arpreq->packets;
+        while (curr_pkt) {
+            uint8_t *frame = curr_pkt->buf;
+            struct sr_packet *next_pkt = curr_pkt->next;
+            sr_ethernet_hdr_t *eth_hdr_f = (sr_ethernet_hdr_t *) frame;
+            struct sr_if *interface_out = sr_get_interface(sr, curr_pkt->iface);
+            memcpy(eth_hdr_f->ether_shost, interface_out->addr, ETHER_ADDR_LEN);
+            memcpy(eth_hdr_f->ether_dhost, arp_hdr->ar_sha, ETHER_ADDR_LEN);
+            sr_send_packet(sr, frame, curr_pkt->len, curr_pkt->iface);
+            curr_pkt = next_pkt;
+        }
+        sr_arpreq_destroy(&(sr->cache), arpreq);
     }
-} /*end of handle_ARP() */
-
-/**
- * Send an ARP request given an ARP reply.
- * @param sr      sr instance
- * @param arp_hdr arp header containing the arp reply
- */
-void handle_arp_reply(struct sr_instance *sr, sr_arp_hdr_t *arp_hdr) {
-    printf("    In handle_arp_reply() ----------------\n");
-
-    struct sr_arpreq *req_entry = sr_arpcache_insert(&(sr->cache), arp_hdr->ar_sha, arp_hdr->ar_sip);
-    printf("    Loop through list of recent packets that replied to us and send arp reply for each...\n");
-    
-    /* Loop through packet we recieved an ARP request from and reply to each with an
-    ARP reply packet. */
-    struct sr_packet *current_packet = req_entry->packets;
-    while (current_packet) {
-        printf("        Constructing arp request packet..\n");
-        uint8_t *reply_pkt = current_packet->buf;
-        
-        sr_ethernet_hdr_t *eth_hdr = (sr_ethernet_hdr_t *) reply_pkt;
-        struct sr_if *out_iface = sr_get_interface(sr, current_packet->iface);
-        memcpy(eth_hdr->ether_shost, out_iface->addr, ETHER_ADDR_LEN);
-        memcpy(eth_hdr->ether_dhost, arp_hdr->ar_sha, ETHER_ADDR_LEN);
-        
-        printf("        sending arp request packet...\n");
-        sr_send_packet(sr, reply_pkt, current_packet->len, current_packet->iface);
-        
-        current_packet = current_packet->next;
+    else {
+        printf("ERROR: Invalid Operation Type.\n");
     }
-    
-    /*Remove the arp request after sending a reply to it*/
-    sr_arpreq_destroy(&(sr->cache), req_entry);
 }
 
-/**
- * Respond to an ARP op request by constructing an ARP reply to send back
- * to to the sender through a given outgoing interface.
- *
- * @param sr          sr instance
- * @param request_pkt incoming ARP request packet
- * @param len         length of ARP request packet
- * @param iface       interface this request packet was sent through
- */
-void handle_arp_request (struct sr_instance* sr,
-                         uint8_t * request_pkt, 
-                         unsigned int len,
-                         struct sr_if* iface) {
+void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req) {
+    time_t now = time(NULL);
+    if (difftime(now, req->sent) >= 0.9) {
+        if (req->times_sent >= 5) {
+            struct sr_packet *pkt_pending = req->packets;
+            struct sr_if *interface = sr_get_interface(sr, pkt_pending->iface);
+            while (pkt_pending) {
+                handle_ICMP(sr, HOST_UNREACHABLE, pkt_pending->buf, 0, interface->ip);
+                pkt_pending = pkt_pending->next;
+            }
+            sr_arpreq_destroy(&(sr->cache), req);
+        }
+        else {
+            int packet_len = sizeof(sr_ethernet_hdr_t) + sizeof(sr_arp_hdr_t);
+            uint8_t *pkt = malloc(packet_len);
 
-    /* Contruct arp reply packet to send back to the source address and IP. */
-    unsigned int reply_pkt_len = sizeof(sr_ethernet_hdr_t) + sizeof(sr_arp_hdr_t);
-    uint8_t *reply_pkt = malloc(reply_pkt_len);
+            struct sr_ethernet_hdr *eth_hdr = (struct sr_ethernet_hdr *)pkt;
+            struct sr_if *interface = sr_get_interface(sr, req->packets->iface);
+            uint8_t hrd_addr[ETHER_ADDR_LEN] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+            enum sr_ethertype eth_arp = ethertype_arp;
+            enum sr_ethertype eth_ip = ethertype_ip;
 
-    struct sr_ethernet_hdr *request_eth_hdr = (struct sr_ethernet_hdr *)request_pkt;
-    struct sr_ethernet_hdr *reply_arp_hdr = (struct sr_ethernet_hdr *)reply_pkt;
+            memcpy(eth_hdr->ether_dhost, hrd_addr, ETHER_ADDR_LEN);
+            memcpy(eth_hdr->ether_shost, interface->addr, ETHER_ADDR_LEN);
+            eth_hdr->ether_type = htons(eth_arp);
 
-    gen_eth_hdr(reply_arp_hdr,
-                    request_eth_hdr->ether_shost, 
-                    iface->addr, 
-                    ethertype_arp);
+            struct sr_arp_hdr *arp_hdr = (struct sr_arp_hdr *)(sizeof(sr_ethernet_hdr_t) + pkt);
+            enum sr_arp_hrd_fmt hrd_eth = arp_hrd_ethernet;
+            enum sr_arp_opcode arp_op_req = arp_op_request;
 
-    struct sr_arp_hdr *arp_hdr = ((struct sr_arp_hdr *)(reply_pkt + sizeof(sr_ethernet_hdr_t)));
-    struct sr_arp_hdr *request_arp_hdr = ((struct sr_arp_hdr *)(request_pkt + sizeof(sr_ethernet_hdr_t)));
-    gen_arp_hdr(arp_hdr,
-            arp_hrd_ethernet,
-            ethertype_ip,
-            ETHER_ADDR_LEN,
-            4,
-            arp_op_reply,
-            iface->addr, 
-            iface->ip,
-            request_arp_hdr->ar_sha, 
-            request_arp_hdr->ar_sip);
+            arp_hdr->ar_hrd = htons(hrd_eth);
+            arp_hdr->ar_pro = htons(eth_ip);
+            arp_hdr->ar_hln = ETHER_ADDR_LEN;
+            arp_hdr->ar_pln = 4;
+            arp_hdr->ar_op = htons(arp_op_req);
+            arp_hdr->ar_sip = interface->ip;
+            arp_hdr->ar_tip = req->ip;
+            memcpy(arp_hdr->ar_sha, interface->addr, ETHER_ADDR_LEN);
+            memcpy(arp_hdr->ar_tha, hrd_addr, ETHER_ADDR_LEN);
 
-    sr_send_packet(sr, reply_pkt, reply_pkt_len, iface->name);
+            printf("Sending Packets.. [3].\n");
 
-    free(reply_pkt);
+            sr_send_packet(sr, pkt, packet_len, interface->name);
+            free(pkt);
+            req->sent = now;
+            req->times_sent++;
+        }
+    }
 }
 
 /* You should not need to touch the rest of this code. */
@@ -443,11 +349,11 @@ void *sr_arpcache_timeout(void *sr_ptr) {
         
         pthread_mutex_lock(&(cache->lock));
     
-        time_t curtime = time(NULL);
+        time_t now = time(NULL);
         
         int i;    
         for (i = 0; i < SR_ARPCACHE_SZ; i++) {
-            if ((cache->entries[i].valid) && (difftime(curtime,cache->entries[i].added) > SR_ARPCACHE_TO)) {
+            if ((cache->entries[i].valid) && (difftime(now,cache->entries[i].added) > SR_ARPCACHE_TO)) {
                 cache->entries[i].valid = 0;
             }
         }
@@ -459,4 +365,3 @@ void *sr_arpcache_timeout(void *sr_ptr) {
     
     return NULL;
 }
-

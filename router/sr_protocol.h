@@ -228,9 +228,9 @@ struct sr_tcp_temp_hdr /* For calculating TCP checksum */
 {
   uint32_t ip_src;
   uint32_t ip_dst;
-  uint8_t blank;
   uint8_t ip_p;
   uint16_t length;
+  uint8_t pad;
 } __attribute__ ((packed));
 typedef struct sr_tcp_temp_hdr sr_tcp_temp_hdr_t;
 

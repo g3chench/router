@@ -354,9 +354,9 @@ void handle_nat(struct sr_instance* sr,
 
       temp_hdr->ip_src = ip_hdr->ip_src;
       temp_hdr->ip_dst = ip_hdr->ip_dst;
-      temp_hdr->blank = 0;
       temp_hdr->ip_p = ip_hdr->ip_p;
       temp_hdr->length = htons(tcp_len);
+      temp_hdr->pad = 0;
       memcpy(temp_hdr_buf + sizeof(sr_tcp_temp_hdr_t), tcp_hdr, tcp_len);
 
       tcp_hdr->tcp_sum = cksum(temp_hdr_buf, total_len);
@@ -383,9 +383,9 @@ void handle_nat(struct sr_instance* sr,
 
           temp_hdr->ip_src = ip_hdr->ip_src;
           temp_hdr->ip_dst = ip_hdr->ip_dst;
-          temp_hdr->blank = 0;
           temp_hdr->ip_p = ip_hdr->ip_p;
           temp_hdr->length = htons(tcp_len);
+          temp_hdr->pad = 0;
           memcpy(temp_hdr_buf + sizeof(sr_tcp_temp_hdr_t), tcp_hdr, tcp_len);
 
           tcp_hdr->tcp_sum = cksum(temp_hdr_buf, total_len);
@@ -395,7 +395,7 @@ void handle_nat(struct sr_instance* sr,
           forward_IP_packet(sr, packet, len);
         }
 
-      } else if (tcp_hdr->ctrl_flags & SYN_FLAG) { /* Unsolicited inbound syn (most likely for simultaneous open) */
+      } else if (tcp_hdr->ctrl_flags & SYN_FLAG) { /* Simultaneous open */
         map = sr_nat_insert_mapping(nat, ip_hdr->ip_src, tcp_hdr->src_port, nat_mapping_tcp);
         update_tcp_conn(nat, map, packet, len, 1);
       }
