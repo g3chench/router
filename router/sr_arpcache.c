@@ -39,7 +39,7 @@ void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req) {
 
 			struct sr_arp_hdr *arp_hdr = (struct sr_arp_hdr *)(sizeof(sr_ethernet_hdr_t) + pkt);
 			enum sr_arp_hrd_fmt hrd_eth = arp_hrd_ethernet;
-			enum sr_arp_op_req arp_op_req = arp_op_request;
+			enum sr_arp_opcode arp_op_req = arp_op_request;
 
 
 			/* format of hardware address   */
