@@ -1,6 +1,6 @@
 # simple-router
 
-### Overview
+### Simple Router
 
 This router routes Ethernet packets between a host and clients with a static routing table by performing the following actions:
 
@@ -29,5 +29,36 @@ This router routes Ethernet packets between a host and clients with a static rou
     - send packet to next hop interface
     - If no ARP cache entry found, send ARP request (if ARP request has already been sent 5 times, send ICMP host unreachable message)
 
-### Design Considerations
+### Network Address Translator
 
+Enable NAT functionality with the `-n` flag. The following timeout intervals are also configurable with flags:
+
+  - `-I INTEGER`: ICMP query timeout interval in seconds
+  - `-E INTEGER`: TCP Established Idle Timeout in seconds
+  - `-R INTEGER`: TCP Transitory Idle Timeout in seconds
+
+Translates packets by performing the following actions:
+
+- Receives packet on an interface
+
+- Check of it's ICMP or TCP
+
+- If packet is outbound
+
+  - Look up unique mapping
+
+  - If mapping not found, insert mapping
+
+- Else
+
+  - If no mapping and not a SYN, drop packet
+
+- Rewrite IP header for packet
+
+- Rewrite ID for ICMP and port for TCP
+
+- Update checksums
+
+- Route packet
+
+Does not support UDP

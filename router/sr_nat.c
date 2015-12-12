@@ -220,7 +220,7 @@ struct sr_nat_mapping *sr_nat_insert_mapping(struct sr_nat *nat,
   return mapping_copy;
 }
 
-/* Return an ICMP ID for an ICMP mapping or an unused port number for a TCP mapping*/
+/* Return an ICMP ID for an ICMP mapping or an unused port number for a TCP mapping */
 int get_port_number(struct sr_nat *nat, sr_nat_mapping_type type) {
 
   uint16_t i = -1;
@@ -261,9 +261,9 @@ void handle_nat(struct sr_instance* sr,
 
     sr_icmp_t0_hdr_t *icmp_hdr = (sr_icmp_t0_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t));
 
-    /* Internal interface */
     if (!strncmp(interface, INTERNAL_INTERFACE, sr_IFACE_NAMELEN)) {
 
+      /* Outbound */
       struct sr_nat_mapping *map = sr_nat_lookup_internal(nat, ip_hdr->ip_src, icmp_hdr->id, nat_mapping_icmp);
       
       /* No mapping found */
@@ -280,14 +280,12 @@ void handle_nat(struct sr_instance* sr,
       ip_hdr->ip_sum = cksum(ip_hdr, ip_hdr->ip_hl * 4);
 
       forward_IP_packet(sr, packet, len);
-    }
 
-    /* External interface */
-    else if (!strncmp(interface, EXTERNAL_INTERFACE, sr_IFACE_NAMELEN)) {
-
+    } else if (!strncmp(interface, EXTERNAL_INTERFACE, sr_IFACE_NAMELEN)) {
+      
+      /* Inbound */
       struct sr_nat_mapping *map = sr_nat_lookup_external(nat, icmp_hdr->id, nat_mapping_icmp);
 
-      /* Inbound */
       if (map) {
 
         ip_hdr->ip_dst = map->ip_int;
@@ -328,6 +326,7 @@ void handle_nat(struct sr_instance* sr,
     
     if (!strncmp(interface, INTERNAL_INTERFACE, sr_IFACE_NAMELEN)) {
 
+      /* Outbound */
       struct sr_nat_mapping *map = sr_nat_lookup_internal(nat, ip_hdr->ip_src, tcp_hdr->src_port, nat_mapping_tcp);
       
       /* No mapping found */
@@ -366,6 +365,8 @@ void handle_nat(struct sr_instance* sr,
       forward_IP_packet(sr, packet, len);
 
     } else if (!strncmp(interface, EXTERNAL_INTERFACE, sr_IFACE_NAMELEN)) {
+
+      /* Inbound */
       struct sr_nat_mapping *map = sr_nat_lookup_external(nat, tcp_hdr->dst_port, nat_mapping_tcp);
       
       if (map) {
