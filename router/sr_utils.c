@@ -306,7 +306,7 @@ void sr_arp_entry_filter(struct sr_instance* sr, uint8_t* pkt, int len, struct s
     struct sr_if* interface = sr_get_interface(sr, rt->interface);
     memcpy(eth_hdr->ether_dhost, arpentry->mac, ETHER_ADDR_LEN);
     memcpy(eth_hdr->ether_shost, interface->addr, ETHER_ADDR_LEN);
-    printf("2...DEBUG: SEND PACKET.\n");
+    printf("Sending Packets.. [2].\n");
     sr_send_packet(sr, pkt, len, rt->interface);
     free(arpentry);
   }
