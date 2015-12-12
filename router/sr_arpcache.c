@@ -16,9 +16,8 @@
 void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req) {
 	time_t now = time(NULL);
 	if (difftime(now, req->sent) >= 0.9) {
-		/* Send ICMP host unreachable to all waiting packets */
 		if (req->times_sent >= 5) {
-			struct sr_packet *pkt_pending = req->packets; /* linked list */
+			struct sr_packet *pkt_pending = req->packets;
 			struct sr_if *interface = sr_get_interface(sr, pkt_pending->iface);
 			while (pkt_pending) {
 				icmp_handler(sr, pkt_pending->buf, 0, interface->ip, ICMP_HOSTUNREACHABLE);
@@ -54,9 +53,7 @@ void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req) {
 			memcpy(arp_hdr->ar_sha, interface->addr, ETHER_ADDR_LEN);
 			memcpy(arp_hdr->ar_tha, hrd_addr, ETHER_ADDR_LEN);
 
-
-			printf("DEBUG: SEND PACKET (3).\n");
-			/*print_hdrs(packet, packet_len);*/
+			printf("3...DEBUG: SEND PACKET.\n");
 
 			sr_send_packet(sr, pkt, packet_len, interface->name);
 			free(pkt);

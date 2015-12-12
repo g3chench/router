@@ -204,7 +204,7 @@ void sr_handlepacket(struct sr_instance* sr,
 						}
 					}
 					else if (protocol == ip_protocol_udp || protocol == ip_protocol_tcp) {
-						icmp_handler(sr, packet, 0, 0, ICMP_PORTUNREACHABLE);
+						icmp_handler(sr, packet, 0, ip_hdr->ip_dst, ICMP_PORTUNREACHABLE);
 					}
 					else { 
 						printf("ERROR: Unsupported IP protocol type.\n");
