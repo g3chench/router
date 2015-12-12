@@ -196,7 +196,7 @@ void icmp_hdr_filter(uint8_t *buf, uint8_t *pkt, int icmp_type){
 	sr_ip_hdr_t *ip_hdr = (sr_ip_hdr_t *)(buf + sizeof(sr_ethernet_hdr_t));
 	int ip_hl = ip_hdr->ip_hl * 4;
 
-  sr_ip_hdr_t *ip_hdr = (sr_ip_hdr_t *)(pkt + sizeof(sr_ethernet_hdr_t));
+  sr_ip_hdr_t *original_ip_hdr = (sr_ip_hdr_t *)(pkt + sizeof(sr_ethernet_hdr_t));
 	
   if (icmp_type == ICMP_ECHOREPLY) { 
     sr_icmp_hdr_t *icmp_hdr = (sr_icmp_hdr_t *)(buf + sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t));
@@ -229,7 +229,7 @@ void icmp_hdr_filter(uint8_t *buf, uint8_t *pkt, int icmp_type){
     }
     icmp_hdr->unused = 0;
     icmp_hdr->next_mtu = 0;
-    memcpy(icmp_hdr->data, ip_hdr, ICMP_DATA_SIZE);
+    memcpy(icmp_hdr->data, original_ip_hdr, ICMP_DATA_SIZE);
     icmp_hdr->icmp_sum = 0;
     icmp_hdr->icmp_sum = cksum(icmp_hdr, ntohs(ip_hdr->ip_len) - ip_hl);
   }
@@ -241,9 +241,9 @@ void icmp_handler (struct sr_instance* sr /* lent */,
                 uint32_t ip_sip,
                 int icmp_type){
 
-  sr_ip_hdr_t *ip_hdr = (sr_ip_hdr_t *)(pkt + sizeof(sr_ethernet_hdr_t));
+  sr_ip_hdr_t *original_ip_hdr = (sr_ip_hdr_t *)(pkt + sizeof(sr_ethernet_hdr_t));
 
-  struct sr_rt *rt = LPM(ip_hdr->ip_src, sr->routing_table);
+  struct sr_rt *rt = LPM(original_ip_hdr->ip_src, sr->routing_table);
   if (!rt) {
     printf("ERROR: no longest prefix match\n");
     return;
@@ -256,12 +256,12 @@ void icmp_handler (struct sr_instance* sr /* lent */,
   }
 
   if (icmp_type == ICMP_ECHOREPLY) { 
-    uint32_t ip_src = ip_hdr->ip_dst;
-    ip_hdr->ip_dst = ip_hdr->ip_src;
-    ip_hdr->ip_src = ip_src;
-    ip_hdr->ip_ttl = INIT_TTL;
-    ip_hdr->ip_sum = 0;
-    ip_hdr->ip_sum = cksum(ip_hdr, ip_hdr->ip_hl * 4);
+    uint32_t ip_src = original_ip_hdr->ip_dst;
+    original_ip_hdr->ip_dst = original_ip_hdr->ip_src;
+    original_ip_hdr->ip_src = ip_src;
+    original_ip_hdr->ip_ttl = INIT_TTL;
+    original_ip_hdr->ip_sum = 0;
+    original_ip_hdr->ip_sum = cksum(original_ip_hdr, original_ip_hdr->ip_hl * 4);
     icmp_hdr_filter(pkt, pkt, icmp_type);
     sr_arp_entry_filter(sr, pkt, len, rt);
   }
@@ -272,23 +272,23 @@ void icmp_handler (struct sr_instance* sr /* lent */,
     enum sr_ethertype ethertype = ethertype_ip;
     eth_hdr->ether_type = htons(ethertype);
 
-    sr_ip_hdr_t *new_ip_hdr = (sr_ip_hdr_t *)(new_pkt + sizeof(sr_ethernet_hdr_t));
+    sr_ip_hdr_t *ip_hdr = (sr_ip_hdr_t *)(new_pkt + sizeof(sr_ethernet_hdr_t));
 
     enum sr_ip_protocol protocol = ip_protocol_icmp;
-    new_ip_hdr->ip_v = 4;             /* version */
-    new_ip_hdr->ip_hl = 5;            /* header length */
-    new_ip_hdr->ip_tos = 0;           /* type of service */
-    new_ip_hdr->ip_len = htons(sizeof(struct sr_ip_hdr) + sizeof(sr_icmp_t3_hdr_t));  /* total length */
-    new_ip_hdr->ip_id = 0x0000;       /* identification */
-    new_ip_hdr->ip_off = htons(IP_DF);  /* fragment offset field */
-    new_ip_hdr->ip_ttl = INIT_TTL;    /* time to live */
-    new_ip_hdr->ip_p = protocol;      /* protocol */
-    new_ip_hdr->ip_src = ip_sip;   /* source address*/
-    new_ip_hdr->ip_dst = ip_hdr->ip_src; /* dest address*/
+    ip_hdr->ip_v = 4;             /* version */
+    ip_hdr->ip_hl = 5;            /* header length */
+    ip_hdr->ip_tos = 0;           /* type of service */
+    ip_hdr->ip_len = htons(sizeof(struct sr_ip_hdr) + sizeof(sr_icmp_t3_hdr_t));  /* total length */
+    ip_hdr->ip_id = 0x0000;       /* identification */
+    ip_hdr->ip_off = htons(IP_DF);  /* fragment offset field */
+    ip_hdr->ip_ttl = INIT_TTL;    /* time to live */
+    ip_hdr->ip_p = protocol;      /* protocol */
+    ip_hdr->ip_src = ip_sip;   /* source address*/
+    ip_hdr->ip_dst = original_ip_hdr->ip_src; /* dest address*/
 
     
-    new_ip_hdr->ip_sum = 0x0000; 
-    new_ip_hdr->ip_sum = cksum(ip_hdr, ip_hdr->ip_hl * 4);
+    ip_hdr->ip_sum = 0x0000; 
+    ip_hdr->ip_sum = cksum(ip_hdr, ip_hdr->ip_hl * 4);
 
     icmp_hdr_filter(new_pkt, pkt, icmp_type);
 
