@@ -1,4 +1,4 @@
-# nat-router
+# router
 
 ### Simple Router
 
